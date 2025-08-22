@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Controle Calorias — v7</title>
+<title>Controle Calorias — v8</title>
 <style>
   :root{
     --bg:#f4f5f7; --text:#111827; --muted:#6b7280; --card:#ffffff; --primary:#111827;
@@ -74,8 +74,8 @@
   .neutro{background:var(--orange)}
   .superavit{background:var(--red)}
   .hidden{display:none !important}
-  #configModal, #impExpModal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); padding:16px}
-  #configContent, #impExpContent{background:var(--card); width:min(92vw,560px); border-radius:16px; box-shadow:0 18px 34px rgba(0,0,0,.18); padding:18px; border:1px solid var(--border)}
+  #configModal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); padding:16px}
+  #configContent{background:var(--card); width:min(92vw,720px); border-radius:16px; box-shadow:0 18px 34px rgba(0,0,0,.18); padding:18px; border:1px solid var(--border)}
   canvas{width:100%; height:260px; border-radius:12px; background:#fff; border:1px solid var(--border); margin:10px 0}
   .muted{color:var(--muted);}
   .right{text-align:right}
@@ -88,6 +88,15 @@
     padding:6px 8px; border-radius:8px; font-size:12px; line-height:1; box-shadow:0 4px 14px rgba(0,0,0,.2);
     transform:translate(-50%,-120%); white-space:nowrap; z-index: 2000; display:none;
   }
+
+  /* Vertical checklist */
+  .chk-list{list-style:none; padding:0; margin:10px 0}
+  .chk-list li{display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px dashed var(--border)}
+  .chk-list li:last-child{border-bottom:none}
+
+  /* Config atividades list */
+  .atv-list{list-style:none; padding:0; margin:10px 0}
+  .atv-list li{display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border:1px solid var(--border); border-radius:10px; margin-bottom:8px; background:#fff}
 </style>
 </head>
 <body>
@@ -139,13 +148,7 @@
         <div class="col">
           <label class="muted">Tipo</label>
           <select id="atividadeTipo" onchange="setMET()">
-            <option value="Corrida (Trote)" data-met="8.3">Corrida (Trote)</option>
-            <option value="Corrida (10k Ritmo)" data-met="9.8">Corrida (10k Ritmo)</option>
-            <option value="Musculação" data-met="3.5">Musculação</option>
-            <option value="Bike Moderada" data-met="6.8">Bike Moderada</option>
-            <option value="Caminhada Rápida" data-met="3.8">Caminhada Rápida</option>
-            <option value="Escada" data-met="8.0">Escada</option>
-            <option value="Remador Moderado" data-met="7.0">Remador Moderado</option>
+            <!-- options injected by JS from catalogo -->
           </select>
         </div>
         <div class="col">
@@ -228,6 +231,10 @@
           <option value="30" selected>30 dias</option>
           <option value="90">90 dias</option>
         </select>
+        <span class="muted">ou</span>
+        <label class="muted">De</label><input type="date" id="rangeDe" onchange="aplicarRange()">
+        <label class="muted">Até</label><input type="date" id="rangeAte" onchange="aplicarRange()">
+        <button class="ghost" onclick="limparRange()">Limpar intervalo</button>
       </div>
       <canvas id="graficoPeso"></canvas>
       <canvas id="graficoAtividade"></canvas>
@@ -247,13 +254,13 @@
         <div class="col"><label class="muted">De</label><input type="date" id="limpaDe"></div>
         <div class="col"><label class="muted">Até</label><input type="date" id="limpaAte"></div>
       </div>
-      <div class="row">
-        <div class="col"><label><input type="checkbox" id="clrPeso" checked> Peso</label></div>
-        <div class="col"><label><input type="checkbox" id="clrTBM"> TBM</label></div>
-        <div class="col"><label><input type="checkbox" id="clrGasto"> Gasto</label></div>
-        <div class="col"><label><input type="checkbox" id="clrConsumo"> Consumo</label></div>
-        <div class="col"><label><input type="checkbox" id="clrSaldo"> Saldo</label></div>
-      </div>
+      <ul class="chk-list">
+        <li><label><input type="checkbox" id="clrPeso" checked> Peso</label></li>
+        <li><label><input type="checkbox" id="clrTBM"> TBM</label></li>
+        <li><label><input type="checkbox" id="clrGasto"> Gasto</label></li>
+        <li><label><input type="checkbox" id="clrConsumo"> Consumo</label></li>
+        <li><label><input type="checkbox" id="clrSaldo"> Saldo</label></li>
+      </ul>
       <div class="toolbar">
         <button class="primary" onclick="limparDados()">🧹 Limpar campos no intervalo</button>
         <button class="ghost" onclick="excluirRegistros()">🗑️ Excluir registros no intervalo</button>
@@ -312,6 +319,15 @@
       <div class="col"><input type="number" id="metaConsumo" placeholder="Meta de consumo (kcal/dia)"></div>
       <div class="col"><input type="number" id="metaAtividade" placeholder="Meta de atividade (kcal/dia)"></div>
     </div>
+
+    <h4>Atividades</h4>
+    <div class="row">
+      <div class="col"><input type="text" id="configAtvNome" placeholder="Nome da atividade (ex: Corrida)"></div>
+      <div class="col"><input type="number" step="0.1" id="configAtvMET" placeholder="MET base (ex: 8.3)"></div>
+      <div class="col"><button class="primary" onclick="adicionarTipoAtividade()">Adicionar tipo</button></div>
+    </div>
+    <ul id="configAtvLista" class="atv-list"></ul>
+
     <div class="toolbar">
       <button class="primary" onclick="salvarConfig()">Salvar</button>
       <button class="ghost" onclick="closeConfig()">✖ Fechar</button>
@@ -327,6 +343,15 @@ const INITIAL_HISTORICO = [{"data": "2025-02-03", "peso": 112.0, "tbm": 2142.5, 
 let atividades = [];
 let historico = JSON.parse(localStorage.getItem("historico")) || [];
 let config = JSON.parse(localStorage.getItem("config")) || {altura:190, sexo:"M", dob:"", metaPeso:null, metaConsumo:null, metaAtividade:null};
+let catalogo = JSON.parse(localStorage.getItem("catalogoAtividades")) || [
+  {nome:"Corrida", met:8.3},
+  {nome:"Bicicleta Indoor", met:6.8},
+  {nome:"Caminhada", met:3.8},
+  {nome:"Musculação", met:3.5},
+  {nome:"Escada", met:8.0},
+  {nome:"Remo", met:7.0}
+];
+let dashRange = {de:null, ate:null};
 
 if (historico.length === 0 && INITIAL_HISTORICO && INITIAL_HISTORICO.length) {
   historico = INITIAL_HISTORICO;
@@ -623,7 +648,7 @@ function barChart(id, dados, titulo, opts={}){
     drawHLine(opts.hline, opts.hlineLabel || "");
   }
 
-  // MM7 overlay (aligned with chart orientation)
+  // MM7 overlay
   if (opts.mm7){
     const mm = [];
     for(let i=0;i<dados.length;i++){ mm.push(i>=6 ? dados.slice(i-6,i+1).reduce((a,b)=>a+b,0)/7 : null); }
@@ -642,24 +667,49 @@ function barChart(id, dados, titulo, opts={}){
   attachTooltip(id);
 }
 
+function aplicarRange(){
+  dashRange.de = document.getElementById("rangeDe").value || null;
+  dashRange.ate = document.getElementById("rangeAte").value || null;
+  desenharGraficos();
+}
+function limparRange(){
+  dashRange.de = null; dashRange.ate = null;
+  document.getElementById("rangeDe").value = "";
+  document.getElementById("rangeAte").value = "";
+  desenharGraficos();
+}
+
+function getHistoricoFiltrado(){
+  const de = dashRange.de;
+  const ate = dashRange.ate;
+  let arr = historico.slice();
+  if (de || ate) {
+    function inRange(dateISO, d1, d2){
+      const A = new Date(dateISO);
+      const d1d = d1? new Date(d1):null; const d2d = d2? new Date(d2):null;
+      if (d1d && A < d1d) return false;
+      if (d2d && A > d2d) return false;
+      return true;
+    }
+    arr = arr.filter(r=> r.data && inRange(r.data, de, ate));
+  } else {
+    const win = parseInt(document.getElementById("janela").value||"30",10);
+    if (arr.length > win) arr = arr.slice(-win);
+  }
+  return arr;
+}
+
 function desenharGraficos(){
-  const win = parseInt(document.getElementById("janela").value||"30",10);
-  const slice = (arr)=> (arr.length>win? arr.slice(-win):arr);
+  const subset = getHistoricoFiltrado();
 
-  const pesosAll = historico.map(h=>h.peso||0);
-  const ativsAll = historico.map(h=> (h.gasto||0) - (h.tbm||0) );
-  const consAll  = historico.map(h=>h.consumo||0);
-  const saldAll  = historico.map(h=>h.saldo ?? ((h.consumo||0)-(h.gasto||0)));
-  const labelsAll= historico.map(h=> (h.data||"").slice(5));
+  const pesos = subset.map(h=>h.peso||0);
+  const ativs = subset.map(h=> (h.gasto||0) - (h.tbm||0) );
+  const consumos = subset.map(h=>h.consumo||0);
+  const saldosOrig = subset.map(h=>h.saldo ?? ((h.consumo||0)-(h.gasto||0))); // negativo = déficit, positivo = superávit
+  const labels = subset.map(h=> (h.data||"").slice(5));
 
-  const pesos = slice(pesosAll);
-  const ativs = slice(ativsAll);
-  const consumos = slice(consAll);
-  const saldosOrig = slice(saldAll); // original: negativo = déficit, positivo = superávit
-  // Plot rule: déficit (negativo) deve ir PARA CIMA; superávit (positivo) PARA BAIXO
-  const saldosPlot = saldosOrig.map(v => (v < 0 ? absVal(v) : -absVal(v)));
-  function absVal(x){ return x < 0 ? -x : x; }
-  const labels = slice(labelsAll);
+  function absVal(x){ return x<0 ? -x : x; }
+  const saldosPlot = saldosOrig.map(v => (v < 0 ? absVal(v) : -absVal(v))); // déficit para cima (positivo), superávit para baixo (negativo)
 
   // metas
   const metaPeso = (config.metaPeso && !isNaN(config.metaPeso)) ? Number(config.metaPeso) : null;
@@ -692,7 +742,7 @@ function desenharGraficos(){
   });
 }
 
-// Tabela últimos 30 dias
+// Tabela últimos 30 dias (no card Dados)
 function renderHistoricoTabela(){
   const tbody = document.querySelector("#historicoTabela tbody");
   tbody.innerHTML = "";
@@ -705,7 +755,7 @@ function renderHistoricoTabela(){
   });
 }
 
-// ----- Config -----
+// ----- Config & Catálogo de Atividades -----
 function salvarConfig(){
   config.dob = document.getElementById("configDOB").value || config.dob || "";
   config.altura = parseFloat(document.getElementById("configAltura").value)||config.altura||170;
@@ -714,7 +764,56 @@ function salvarConfig(){
   config.metaConsumo = parseFloat(document.getElementById("metaConsumo").value)||null;
   config.metaAtividade = parseFloat(document.getElementById("metaAtividade").value)||null;
   localStorage.setItem("config", JSON.stringify(config));
+  localStorage.setItem("catalogoAtividades", JSON.stringify(catalogo));
   closeConfig(); atualizarTBM(); atualizarGasto(); desenharGraficos();
+}
+
+function renderCatalogoSelect(){
+  const sel = document.getElementById("atividadeTipo");
+  sel.innerHTML = "";
+  catalogo.forEach((item,i)=>{
+    const opt = document.createElement("option");
+    opt.value = item.nome; opt.textContent = item.nome; opt.dataset.met = item.met;
+    sel.appendChild(opt);
+  });
+  setMET();
+}
+
+function renderCatalogoConfig(){
+  const ul = document.getElementById("configAtvLista");
+  ul.innerHTML = "";
+  catalogo.forEach((item,idx)=>{
+    const li = document.createElement("li");
+    li.innerHTML = `<span><strong>${item.nome}</strong> — MET base: ${item.met}</span>
+                    <button onclick="removerTipoAtividade(${idx})">❌ Remover</button>`;
+    ul.appendChild(li);
+  });
+}
+
+function adicionarTipoAtividade(){
+  const nome = (document.getElementById("configAtvNome").value || "").trim();
+  const met = parseFloat(document.getElementById("configAtvMET").value);
+  if (!nome || isNaN(met) || met<=0){
+    alert("Informe nome e MET base válido (>0).");
+    return;
+  }
+  if (catalogo.some(c=>c.nome.toLowerCase()===nome.toLowerCase())){
+    alert("Esse tipo já existe.");
+    return;
+  }
+  catalogo.push({nome, met});
+  document.getElementById("configAtvNome").value="";
+  document.getElementById("configAtvMET").value="";
+  renderCatalogoSelect();
+  renderCatalogoConfig();
+  localStorage.setItem("catalogoAtividades", JSON.stringify(catalogo));
+}
+
+function removerTipoAtividade(idx){
+  catalogo.splice(idx,1);
+  renderCatalogoSelect();
+  renderCatalogoConfig();
+  localStorage.setItem("catalogoAtividades", JSON.stringify(catalogo));
 }
 
 // ----- Salvar dia -----
@@ -747,16 +846,10 @@ function salvarDia(){
 }
 
 // ----- Import / Export CSV -----
-function normalizeKey(s){
-  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
-}
+function normalizeKey(s){ return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,""); }
 function detectDelimiter(headerLine){
-  const cands = [",",";","\t","|"];
-  let best = ","; let bestCount = 0;
-  for(const d of cands){
-    const count = headerLine.split(d).length-1;
-    if(count > bestCount){ bestCount = count; best = d; }
-  }
+  const cands = [",",";","\t","|"]; let best = ","; let bestCount = 0;
+  for(const d of cands){ const count = headerLine.split(d).length-1; if(count > bestCount){ bestCount = count; best = d; } }
   return best;
 }
 
@@ -926,6 +1019,9 @@ function excluirRegistros(){
   document.getElementById("metaPeso").value = (config.metaPeso!=null? config.metaPeso : "");
   document.getElementById("metaConsumo").value = (config.metaConsumo!=null? config.metaConsumo : "");
   document.getElementById("metaAtividade").value = (config.metaAtividade!=null? config.metaAtividade : "");
+
+  renderCatalogoSelect();
+  renderCatalogoConfig();
   setMET();
   atualizarGasto();
   desenharGraficos();
