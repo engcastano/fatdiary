@@ -1,1032 +1,865 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Controle Calorias — v8</title>
-<style>
-  :root{
-    --bg:#f4f5f7; --text:#111827; --muted:#6b7280; --card:#ffffff; --primary:#111827;
-    --green:#10b981; --orange:#f59e0b; --red:#ef4444; --border:#e5e7eb; --axis:#94a3b8;
-    --ring:#2563eb22;
-    --bluePastel: rgba(147,197,253,0.9);
-    --amberPastel: rgba(252,211,77,0.9);
-    --violetPastel: rgba(196,181,253,0.9);
-    --greenPastel: rgba(167,243,208,0.9);
-    --redPastel: rgba(254,202,202,0.9);
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
-  body{
-    font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-    background:
-      radial-gradient(1000px 500px at 100% -10%, #e2e8f0 0%, rgba(226,232,240,0) 60%),
-      radial-gradient(1000px 500px at -10% 0%, #f1f5f9 0%, rgba(241,245,249,0) 60%),
-      var(--bg);
-    color:var(--text);
-  }
-  header{
-    position:sticky; top:0; z-index: 1000;
-    background:linear-gradient(180deg, rgba(255,255,255,.97), rgba(255,255,255,.9));
-    backdrop-filter: saturate(1.2) blur(6px);
-    border-bottom:1px solid var(--border);
-    padding:14px 18px; display:flex; align-items:center; justify-content:center;
-  }
-  .title{ font-weight:900;font-size:22px; letter-spacing:.2px; text-align:center; margin:0; line-height:1; }
-  .gear-wrap{ position:absolute; right:12px; top:10px; }
-  .gear-btn{
-    width:36px;height:36px; display:flex; align-items:center; justify-content:center;
-    border:1px solid var(--border); background:#fff; border-radius:10px; font-size:16px; cursor:pointer;
-    box-shadow:0 2px 6px rgba(0,0,0,.06);
-  }
-  .gear-btn:active{transform:translateY(1px)}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RunnerPro</title>
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 24 24' fill='%230f172a' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='24' height='24' fill='%230f172a'/%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  .container{max-width:980px;margin:0 auto;padding:16px}
-  .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; margin:16px 0;
-         box-shadow:0 10px 24px rgba(17,24,39,.06); }
-  .card-header{ display:flex; align-items:center; justify-content:space-between; padding:18px 18px; cursor:pointer; }
-  .card-title{margin:0; font-size:17px; font-weight:800; letter-spacing:.2px}
-  .chev{font-size:18px; color:var(--muted); transition:transform .2s ease}
-  .card-body{padding:18px 18px; border-top:1px solid var(--border);}
-  .row{display:flex; gap:14px; flex-wrap:wrap; align-items:center}
-  .row .col{flex:1 1 200px}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-  input, select, button{
-    width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--border);
-    font-size:16px; background:#fff; outline:none;
-    transition:border-color .15s ease, box-shadow .15s ease;
-  }
-  input:focus, select:focus{ border-color:#2563eb44; box-shadow:0 0 0 6px var(--ring); }
-  button.primary{background:var(--primary); color:#fff; border:none}
-  button.primary:hover{filter:brightness(1.03)}
-  button.ghost{background:#f8fafc}
-  button:hover{box-shadow:0 4px 14px rgba(0,0,0,.08)}
-
-  table{width:100%; border-collapse:separate; border-spacing:0; margin-top:10px; font-size:14px; overflow:hidden; border-radius:12px; border:1px solid var(--border)}
-  th, td{padding:10px 8px; text-align:center; border-bottom:1px solid var(--border); background:#fff}
-  thead th{background:#f8fafc; font-weight:700}
-  tbody tr:nth-child(odd) td{background:#fcfcfd}
-  tbody tr:hover td{background:#f5f7fb}
-
-  .pill{padding:6px 12px; border-radius:999px; color:#fff; font-size:13px; display:inline-block; box-shadow:0 2px 6px rgba(0,0,0,.12)}
-  .deficit{background:var(--green)}
-  .neutro{background:var(--orange)}
-  .superavit{background:var(--red)}
-  .hidden{display:none !important}
-  #configModal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); padding:16px}
-  #configContent{background:var(--card); width:min(92vw,720px); border-radius:16px; box-shadow:0 18px 34px rgba(0,0,0,.18); padding:18px; border:1px solid var(--border)}
-  canvas{width:100%; height:260px; border-radius:12px; background:#fff; border:1px solid var(--border); margin:10px 0}
-  .muted{color:var(--muted);}
-  .right{text-align:right}
-  .toolbar{display:flex; gap:10px; align-items:center; margin:10px 0; flex-wrap:wrap}
-  .subtle{font-size:12px; color:var(--muted)}
-
-  /* Tooltip */
-  #tooltip{
-    position:fixed; pointer-events:none; background:#111827; color:#fff;
-    padding:6px 8px; border-radius:8px; font-size:12px; line-height:1; box-shadow:0 4px 14px rgba(0,0,0,.2);
-    transform:translate(-50%,-120%); white-space:nowrap; z-index: 2000; display:none;
-  }
-
-  /* Vertical checklist */
-  .chk-list{list-style:none; padding:0; margin:10px 0}
-  .chk-list li{display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px dashed var(--border)}
-  .chk-list li:last-child{border-bottom:none}
-
-  /* Config atividades list */
-  .atv-list{list-style:none; padding:0; margin:10px 0}
-  .atv-list li{display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border:1px solid var(--border); border-radius:10px; margin-bottom:8px; background:#fff}
-</style>
+    <style>
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        body { margin: 0; padding: 0; overflow-x: hidden; }
+        @media screen and (max-width: 768px) { input, select, textarea { font-size: 16px !important; } }
+    </style>
 </head>
 <body>
-<header>
-  <h1 class="title">Controle Diário</h1>
-  <div class="gear-wrap">
-    <button class="gear-btn" onclick="openConfig()">⚙️</button>
-  </div>
-</header>
-
-<div class="container">
-
-  <!-- Peso -->
-  <div class="card">
-    <div class="card-header" onclick="toggleCard('pesoCard', this)">
-      <h3 class="card-title">Peso</h3>
-      <span class="chev">▼</span>
-    </div>
-    <div id="pesoCard" class="card-body">
-      <div class="row">
-        <div class="col"><label class="muted">Data</label><input type="date" id="pesoData"></div>
-        <div class="col"><label class="muted">Peso (kg)</label><input type="number" step="0.01" id="pesoValor" placeholder="Peso (kg)"></div>
-        <div class="col"><label class="muted">&nbsp;</label><button class="primary" onclick="salvarPeso()">Salvar peso</button></div>
-      </div>
-      <div class="subtle">Toque no cabeçalho para recolher/expandir</div>
-    </div>
-  </div>
-
-  <!-- TBM -->
-  <div class="card">
-    <div class="card-header" onclick="toggleCard('tbmCard', this)">
-      <h3 class="card-title">TBM (Mifflin–St Jeor)</h3>
-      <span class="chev">▼</span>
-    </div>
-    <div id="tbmCard" class="card-body">
-      <p id="tbmValor"><strong>TBM:</strong> 0 kcal</p>
-      <p class="muted">Calculado automaticamente a partir de peso, <u>data de nascimento</u>, altura e sexo.</p>
-    </div>
-  </div>
-
-  <!-- Atividade -->
-  <div class="card">
-    <div class="card-header" onclick="toggleCard('atividadeCard', this)">
-      <h3 class="card-title">Atividade</h3>
-      <span class="chev">▼</span>
-    </div>
-    <div id="atividadeCard" class="card-body">
-      <div class="row">
-        <div class="col">
-          <label class="muted">Tipo</label>
-          <select id="atividadeTipo" onchange="setMET()">
-            <!-- options injected by JS from catalogo -->
-          </select>
-        </div>
-        <div class="col">
-          <label class="muted">Esforço</label>
-          <select id="atividadeEsforco" onchange="setMET()">
-            <option value="1">Muito leve</option>
-            <option value="2">Leve</option>
-            <option value="3" selected>Médio</option>
-            <option value="4">Forte</option>
-            <option value="5">Muito forte</option>
-          </select>
-        </div>
-        <div class="col">
-          <label class="muted">Tempo (min)</label>
-          <input type="number" id="atividadeTempo" placeholder="Tempo (min)">
-        </div>
-        <div class="col">
-          <label class="muted">MET (sugerido/editável)</label>
-          <input type="number" step="0.1" id="atividadeMET" placeholder="MET">
-        </div>
-        <div class="col">
-          <label class="muted">&nbsp;</label>
-          <button class="primary" onclick="adicionarAtividade()">Adicionar</button>
-        </div>
-      </div>
-
-      <table id="atividadeTabela">
-        <thead><tr><th>Tipo</th><th>Tempo (min)</th><th>MET</th><th>Kcal</th><th>Ação</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Gasto Calórico -->
-  <div class="card">
-    <div class="card-header" onclick="toggleCard('gastoCard', this)">
-      <h3 class="card-title">Gasto Calórico</h3>
-      <span class="chev">▼</span>
-    </div>
-    <div id="gastoCard" class="card-body">
-      <p id="gastoValor"><strong>Gasto:</strong> 0 kcal</p>
-    </div>
-  </div>
-
-  <!-- Consumo & Saldo -->
-  <div class="card">
-    <div class="card-header" onclick="toggleCard('consumoCard', this)">
-      <h3 class="card-title">Calorias (ingestão) & Saldo</h3>
-      <span class="chev">▼</span>
-    </div>
-    <div id="consumoCard" class="card-body">
-      <div class="row">
-        <div class="col"><label class="muted">Consumo (kcal)</label><input type="number" id="consumoKcal" placeholder="Consumo (kcal)" oninput="atualizarSaldoUI()"></div>
-        <div class="col right"><label class="muted">Macros</label><button class="ghost" onclick="toggleMacros()">Exibir macros</button></div>
-      </div>
-      <div id="macrosDiv" class="row hidden">
-        <div class="col"><input type="number" id="consumoProt" placeholder="Proteínas (g)"></div>
-        <div class="col"><input type="number" id="consumoCarb" placeholder="Carboidratos (g)"></div>
-        <div class="col"><input type="number" id="consumoGord" placeholder="Gorduras (g)"></div>
-      </div>
-      <p id="saldoTexto"><strong>Saldo:</strong> 0 kcal</p>
-      <span id="saldoLabel" class="pill neutro">Neutro</span>
-      <div class="toolbar">
-        <button class="primary" onclick="salvarDia()">💾 Salvar dia no histórico</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Dashboard -->
-  <div class="card">
-    <div class="card-header" onclick="toggleCard('dashboardCard', this)">
-      <h3 class="card-title">Dashboard</h3>
-      <span class="chev">▼</span>
-    </div>
-    <div id="dashboardCard" class="card-body">
-      <div class="toolbar" style="position:sticky;top:0;background:#fff;border:1px solid var(--border);padding:8px 10px;border-radius:10px">
-        <label class="muted">Janela:</label>
-        <select id="janela" onchange="desenharGraficos()">
-          <option value="7">7 dias</option>
-          <option value="30" selected>30 dias</option>
-          <option value="90">90 dias</option>
-        </select>
-        <span class="muted">ou</span>
-        <label class="muted">De</label><input type="date" id="rangeDe" onchange="aplicarRange()">
-        <label class="muted">Até</label><input type="date" id="rangeAte" onchange="aplicarRange()">
-        <button class="ghost" onclick="limparRange()">Limpar intervalo</button>
-      </div>
-      <canvas id="graficoPeso"></canvas>
-      <canvas id="graficoAtividade"></canvas>
-      <canvas id="graficoConsumo"></canvas>
-      <canvas id="graficoSaldo"></canvas>
-    </div>
-  </div>
-
-  <!-- Limpar Dados -->
-  <div class="card">
-    <div class="card-header" onclick="toggleCard('limparCard', this)">
-      <h3 class="card-title">Limpar dados (intervalo & campos)</h3>
-      <span class="chev">▼</span>
-    </div>
-    <div id="limparCard" class="card-body">
-      <div class="row">
-        <div class="col"><label class="muted">De</label><input type="date" id="limpaDe"></div>
-        <div class="col"><label class="muted">Até</label><input type="date" id="limpaAte"></div>
-      </div>
-      <ul class="chk-list">
-        <li><label><input type="checkbox" id="clrPeso" checked> Peso</label></li>
-        <li><label><input type="checkbox" id="clrTBM"> TBM</label></li>
-        <li><label><input type="checkbox" id="clrGasto"> Gasto</label></li>
-        <li><label><input type="checkbox" id="clrConsumo"> Consumo</label></li>
-        <li><label><input type="checkbox" id="clrSaldo"> Saldo</label></li>
-      </ul>
-      <div class="toolbar">
-        <button class="primary" onclick="limparDados()">🧹 Limpar campos no intervalo</button>
-        <button class="ghost" onclick="excluirRegistros()">🗑️ Excluir registros no intervalo</button>
-      </div>
-      <p class="muted">Dica: Limpar zera apenas os campos marcados. Excluir remove os registros inteiros do período.</p>
-    </div>
-  </div>
-
-  <!-- Dados (Import/Export + Tabela) -->
-  <div class="card">
-    <div class="card-header" onclick="toggleCard('dadosCard', this)">
-      <h3 class="card-title">Dados</h3>
-      <span class="chev">▼</span>
-    </div>
-    <div id="dadosCard" class="card-body">
-      <div class="toolbar">
-        <input type="file" id="csvInput" accept=".csv" />
-        <button class="primary" onclick="importarCSV()">Importar CSV</button>
-        <button class="ghost" onclick="exportarCSV()">Exportar CSV</button>
-      </div>
-      <p class="muted" style="margin-top:-2px">
-        Cabeçalhos aceitos: <code>Data, Peso, TBM, Atividade, TBT, Consumo, Déficit</code> (ou <code>Deficit/Saldo</code>).
-      </p>
-      <h4>Últimos 30 dias</h4>
-      <table id="historicoTabela">
-        <thead>
-          <tr><th>Data</th><th>Peso</th><th>TBM</th><th>Gasto</th><th>Consumo</th><th>Saldo</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-</div>
-
-<!-- Tooltip element -->
-<div id="tooltip"></div>
-
-<!-- Modal Config -->
-<div id="configModal">
-  <div id="configContent">
-    <h3 style="margin-top:0">Configurações</h3>
-    <div class="row">
-      <div class="col"><input type="date" id="configDOB" placeholder="Data de nascimento"></div>
-      <div class="col"><input type="number" id="configAltura" placeholder="Altura (cm)"></div>
-      <div class="col">
-        <select id="configSexo">
-          <option value="M">Masculino</option>
-          <option value="F">Feminino</option>
-        </select>
-      </div>
-    </div>
-    <h4>Metas</h4>
-    <div class="row">
-      <div class="col"><input type="number" step="0.1" id="metaPeso" placeholder="Meta de peso (kg)"></div>
-      <div class="col"><input type="number" id="metaConsumo" placeholder="Meta de consumo (kcal/dia)"></div>
-      <div class="col"><input type="number" id="metaAtividade" placeholder="Meta de atividade (kcal/dia)"></div>
-    </div>
-
-    <h4>Atividades</h4>
-    <div class="row">
-      <div class="col"><input type="text" id="configAtvNome" placeholder="Nome da atividade (ex: Corrida)"></div>
-      <div class="col"><input type="number" step="0.1" id="configAtvMET" placeholder="MET base (ex: 8.3)"></div>
-      <div class="col"><button class="primary" onclick="adicionarTipoAtividade()">Adicionar tipo</button></div>
-    </div>
-    <ul id="configAtvLista" class="atv-list"></ul>
-
-    <div class="toolbar">
-      <button class="primary" onclick="salvarConfig()">Salvar</button>
-      <button class="ghost" onclick="closeConfig()">✖ Fechar</button>
-    </div>
-  </div>
-</div>
-
-<script>
-// ----- Seed -----
-const INITIAL_HISTORICO = [{"data": "2025-02-03", "peso": 112.0, "tbm": 2142.5, "gasto": 2142.5, "consumo": 1949.0, "saldo": 193.5}, {"data": "2025-02-04", "peso": 111.9, "tbm": 2141.5, "gasto": 2142.54, "consumo": 1840.0, "saldo": 302.54}, {"data": "2025-02-05", "peso": 111.2, "tbm": 2134.5, "gasto": 2142.75, "consumo": 2750.0, "saldo": -607.25}, {"data": "2025-02-06", "peso": 111.5, "tbm": 2137.5, "gasto": 2134.51, "consumo": 2200.0, "saldo": -65.49}, {"data": "2025-02-07", "peso": 111.6, "tbm": 2138.5, "gasto": 2137.5, "consumo": 2588.0, "saldo": -450.5}, {"data": "2025-02-08", "peso": 112.6, "tbm": 2148.5, "gasto": 2137.88, "consumo": 2583.0, "saldo": -445.12}, {"data": "2025-02-09", "peso": 112.5, "tbm": 2147.5, "gasto": 2148.57, "consumo": 2400.0, "saldo": -251.43}, {"data": "2025-02-10", "peso": 111.2, "tbm": 2134.5, "gasto": 2147.45, "consumo": 2331.0, "saldo": -183.55}, {"data": "2025-02-11", "peso": 110.9, "tbm": 2131.5, "gasto": 2134.4, "consumo": 2294.0, "saldo": -159.6}, {"data": "2025-02-12", "peso": 111.7, "tbm": 2139.5, "gasto": 2129.2, "consumo": 2395.0, "saldo": -265.8}, {"data": "2025-02-13", "peso": 110.6, "tbm": 2128.5, "gasto": 2139.65, "consumo": 2227.0, "saldo": -87.35}, {"data": "2025-02-14", "peso": 111.4, "tbm": 2136.5, "gasto": 2129.42, "consumo": 2900.0, "saldo": -770.58}, {"data": "2025-02-15", "peso": 111.0, "tbm": 2132.5, "gasto": 2135.87, "consumo": 2615.0, "saldo": -479.13}, {"data": "2025-02-16", "peso": 111.0, "tbm": 2132.5, "gasto": 2132.5, "consumo": 2360.0, "saldo": -227.5}, {"data": "2025-02-17", "peso": 110.5, "tbm": 2127.5, "gasto": 2132.57, "consumo": 2448.0, "saldo": -315.43}, {"data": "2025-02-18", "peso": 111.0, "tbm": 2132.5, "gasto": 2127.78, "consumo": 3000.0, "saldo": -872.22}, {"data": "2025-02-19", "peso": 110.2, "tbm": 2124.5, "gasto": 2132.78, "consumo": 2700.0, "saldo": -567.22}, {"data": "2025-02-20", "peso": 111.2, "tbm": 2134.5, "gasto": 2125.96, "consumo": 2300.0, "saldo": -174.04}, {"data": "2025-02-21", "peso": 110.4, "tbm": 2126.5, "gasto": 2133.86, "consumo": 2400.0, "saldo": -266.14}, {"data": "2025-02-22", "peso": 109.5, "tbm": 2117.5, "gasto": 2131.7, "consumo": 3100.0, "saldo": -968.3}, {"data": "2025-02-23", "peso": 110.2, "tbm": 2124.5, "gasto": 2117.04, "consumo": 3000.0, "saldo": -882.96}, {"data": "2025-02-24", "peso": 111.6, "tbm": 2138.5, "gasto": 2124.31, "consumo": 2400.0, "saldo": -275.69}, {"data": "2025-02-25", "peso": 110.8, "tbm": 2130.5, "gasto": 2138.56, "consumo": 2100.0, "saldo": 38.56}, {"data": "2025-02-26", "peso": 110.6, "tbm": 2128.5, "gasto": 2130.59, "consumo": 2600.0, "saldo": -469.41}, {"data": "2025-02-27", "peso": 109.1, "tbm": 2113.5, "gasto": 2128.79, "consumo": 2600.0, "saldo": -471.21}, {"data": "2025-02-28", "peso": 110.1, "tbm": 2123.5, "gasto": 2114.12, "consumo": 2400.0, "saldo": -285.88}, {"data": "2025-03-01", "peso": 110.1, "tbm": 2123.5, "gasto": 2123.5, "consumo": 3000.0, "saldo": -876.5}, {"data": "2025-03-02", "peso": 110.1, "tbm": 2123.5, "gasto": 2123.5, "consumo": 3000.0, "saldo": -876.5}, {"data": "2025-03-03", "peso": 110.1, "tbm": 2123.5, "gasto": 2123.5, "consumo": 2800.0, "saldo": -676.5}, {"data": "2025-03-04", "peso": 110.7, "tbm": 2129.5, "gasto": 2123.7, "consumo": 3000.0, "saldo": -876.3}, {"data": "2025-03-05", "peso": 110.8, "tbm": 2130.5, "gasto": 2129.44, "consumo": 2400.0, "saldo": -270.56}, {"data": "2025-03-06", "peso": 111.1, "tbm": 2133.5, "gasto": 2130.76, "consumo": 2400.0, "saldo": -269.24}, {"data": "2025-03-07", "peso": 109.9, "tbm": 2121.5, "gasto": 2132.75, "consumo": 3000.0, "saldo": -867.25}, {"data": "2025-03-08", "peso": 110.4, "tbm": 2126.5, "gasto": 2120.96, "consumo": 3200.0, "saldo": -1079.04}, {"data": "2025-03-09", "peso": 110.0, "tbm": 2122.5, "gasto": 2126.93, "consumo": 2700.0, "saldo": -573.07}, {"data": "2025-03-10", "peso": 109.4, "tbm": 2116.5, "gasto": 2122.47, "consumo": 2500.0, "saldo": -377.53}, {"data": "2025-03-11", "peso": 109.7, "tbm": 2119.5, "gasto": 2116.43, "consumo": 2900.0, "saldo": -783.57}, {"data": "2025-03-12", "peso": 109.2, "tbm": 2114.5, "gasto": 2119.6, "consumo": 2600.0, "saldo": -480.4}, {"data": "2025-03-13", "peso": 109.0, "tbm": 2112.5, "gasto": 2114.6, "consumo": 2500.0, "saldo": -385.4}, {"data": "2025-03-14", "peso": 109.1, "tbm": 2113.5, "gasto": 2112.56, "consumo": 3200.0, "saldo": -1087.44}, {"data": "2025-03-15", "peso": 107.9, "tbm": 2101.5, "gasto": 2114.4, "consumo": 3500.0, "saldo": -1385.6}, {"data": "2025-03-16", "peso": 109.1, "tbm": 2113.5, "gasto": 2095.06, "consumo": 3000.0, "saldo": -904.94}, {"data": "2025-03-17", "peso": 109.0, "tbm": 2112.5, "gasto": 2113.48, "consumo": 2600.0, "saldo": -486.52}, {"data": "2025-03-18", "peso": 109.6, "tbm": 2118.5, "gasto": 2112.74, "consumo": 2700.0, "saldo": -587.26}, {"data": "2025-03-19", "peso": 109.1, "tbm": 2113.5, "gasto": 2118.7, "consumo": 2600.0, "saldo": -481.3}, {"data": "2025-03-20", "peso": 108.2, "tbm": 2104.5, "gasto": 2113.99, "consumo": 2600.0, "saldo": -486.01}, {"data": "2025-03-21", "peso": 109.0, "tbm": 2112.5, "gasto": 2104.63, "consumo": 2600.0, "saldo": -495.37}, {"data": "2025-03-22", "peso": 108.5, "tbm": 2107.5, "gasto": 2115.09, "consumo": 3700.0, "saldo": -1584.91}, {"data": "2025-03-23", "peso": 110.8, "tbm": 2130.5, "gasto": 2130.5, "consumo": 2500.0, "saldo": -369.5}, {"data": "2025-03-24", "peso": 110.8, "tbm": 2130.5, "gasto": 2130.5, "consumo": 2400.0, "saldo": -269.5}, {"data": "2025-03-25", "peso": 110.2, "tbm": 2124.5, "gasto": 2130.65, "consumo": 2500.0, "saldo": -369.35}, {"data": "2025-03-26", "peso": 108.9, "tbm": 2111.5, "gasto": 2125.09, "consumo": 2600.0, "saldo": -474.91}, {"data": "2025-03-27", "peso": 109.3, "tbm": 2115.5, "gasto": 2111.4, "consumo": 2600.0, "saldo": -488.6}, {"data": "2025-03-28", "peso": 108.2, "tbm": 2104.5, "gasto": 2115.07, "consumo": 2800.0, "saldo": -684.93}, {"data": "2025-03-29", "peso": 108.0, "tbm": 2102.5, "gasto": 2104.58, "consumo": 3200.0, "saldo": -1095.42}, {"data": "2025-03-30", "peso": 109.4, "tbm": 2116.5, "gasto": 2102.15, "consumo": 3200.0, "saldo": -1097.85}, {"data": "2025-03-31", "peso": 110.8, "tbm": 2130.5, "gasto": 2118.54, "consumo": 0.0, "saldo": 2118.54}, {"data": "2025-04-01", "peso": 106.7, "tbm": 2089.5, "gasto": 2127.7, "consumo": 1200.0, "saldo": 927.7}, {"data": "2025-04-02", "peso": 105.9, "tbm": 2081.5, "gasto": 2081.5, "consumo": 2500.0, "saldo": -418.5}, {"data": "2025-04-03", "peso": 107.8, "tbm": 2100.5, "gasto": 2100.5, "consumo": 3000.0, "saldo": -899.5}, {"data": "2025-04-04", "peso": 107.7, "tbm": 2099.5, "gasto": 2099.5, "consumo": 3000.0, "saldo": -900.5}, {"data": "2025-04-05", "peso": 109.0, "tbm": 2112.5, "gasto": 2112.5, "consumo": 3000.0, "saldo": -887.5}, {"data": "2025-04-06", "peso": 109.0, "tbm": 2112.5, "gasto": 2112.5, "consumo": 3000.0, "saldo": -887.5}, {"data": "2025-04-07", "peso": 108.6, "tbm": 2108.5, "gasto": 2112.6, "consumo": 1000.0, "saldo": 1112.6}, {"data": "2025-04-08", "peso": 108.5, "tbm": 2107.5, "gasto": 2108.53, "consumo": 1500.0, "saldo": 608.53}, {"data": "2025-04-09", "peso": 107.4, "tbm": 2096.5, "gasto": 2108.46, "consumo": 2900.0, "saldo": -791.54}, {"data": "2025-04-10", "peso": 107.3, "tbm": 2095.5, "gasto": 2096.64, "consumo": 2800.0, "saldo": -703.36}, {"data": "2025-04-11", "peso": 109.2, "tbm": 2114.5, "gasto": 2096.47, "consumo": 2800.0, "saldo": -703.53}, {"data": "2025-04-12", "peso": 108.8, "tbm": 2110.5, "gasto": 2114.7, "consumo": 3500.0, "saldo": -1385.3}, {"data": "2025-04-13", "peso": 109.0, "tbm": 2112.5, "gasto": 2112.5, "consumo": 3000.0, "saldo": -887.5}, {"data": "2025-04-14", "peso": 109.8, "tbm": 2120.5, "gasto": 2112.53, "consumo": 1500.0, "saldo": 612.53}, {"data": "2025-04-15", "peso": 109.1, "tbm": 2113.5, "gasto": 2120.27, "consumo": 1800.0, "saldo": 320.27}, {"data": "2025-04-16", "peso": 107.8, "tbm": 2100.5, "gasto": 2114.47, "consumo": 1800.0, "saldo": 314.47}, {"data": "2025-04-17", "peso": 108.0, "tbm": 2102.5, "gasto": 2100.62, "consumo": 3000.0, "saldo": -899.38}, {"data": "2025-04-18", "peso": 108.7, "tbm": 2109.5, "gasto": 5109.5, "consumo": 4000.0, "saldo": 1109.5}, {"data": "2025-04-19", "peso": 109.4, "tbm": 2116.5, "gasto": 2116.5, "consumo": 4000.0, "saldo": -1883.5}, {"data": "2025-04-20", "peso": 110.1, "tbm": 2123.5, "gasto": 2123.5, "consumo": 4000.0, "saldo": -1876.5}, {"data": "2025-04-21", "peso": 110.8, "tbm": 2130.5, "gasto": 2130.5, "consumo": 4000.0, "saldo": -1869.5}, {"data": "2025-04-22", "peso": 111.7, "tbm": 2139.5, "gasto": 2130.28, "consumo": 0.0, "saldo": 2130.28}, {"data": "2025-04-23", "peso": 108.3, "tbm": 2105.5, "gasto": 2140.35, "consumo": 2800.0, "saldo": -659.65}, {"data": "2025-04-24", "peso": 109.2, "tbm": 2114.5, "gasto": 2105.8, "consumo": 2800.0, "saldo": -694.2}, {"data": "2025-04-25", "peso": 109.6, "tbm": 2118.5, "gasto": 2114.56, "consumo": 2000.0, "saldo": 114.56}, {"data": "2025-04-26", "peso": 109.5, "tbm": 2117.5, "gasto": 2118.54, "consumo": 4000.0, "saldo": -1881.46}, {"data": "2025-04-27", "peso": 110.0, "tbm": 2122.5, "gasto": 2122.5, "consumo": 3000.0, "saldo": -877.5}, {"data": "2025-04-28", "peso": 110.4, "tbm": 2126.5, "gasto": 2122.4, "consumo": 0.0, "saldo": 2122.4}, {"data": "2025-04-29", "peso": 109.4, "tbm": 2116.5, "gasto": 2126.75, "consumo": 0.0, "saldo": 2126.75}, {"data": "2025-04-30", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-01", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-02", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-03", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-04", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-05", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-06", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-07", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-08", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-09", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-10", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-11", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-12", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-13", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-14", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-15", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-16", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-17", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-18", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 0.0, "saldo": 2149.5}, {"data": "2025-05-19", "peso": 112.7, "tbm": 2149.5, "gasto": 2149.5, "consumo": 1560.0, "saldo": 589.5}, {"data": "2025-05-20", "peso": 110.6, "tbm": 2128.5, "gasto": 2149.41, "consumo": 1450.0, "saldo": 699.41}, {"data": "2025-05-21", "peso": 108.7, "tbm": 2109.5, "gasto": 2130.16, "consumo": 1560.0, "saldo": 570.16}, {"data": "2025-05-22", "peso": 108.9, "tbm": 2111.5, "gasto": 2109.45, "consumo": 2400.0, "saldo": -290.55}, {"data": "2025-05-23", "peso": 108.3, "tbm": 2105.5, "gasto": 2111.44, "consumo": 2400.0, "saldo": -288.56}, {"data": "2025-05-24", "peso": 108.3, "tbm": 2105.5, "gasto": 2105.5, "consumo": 2400.0, "saldo": -294.5}, {"data": "2025-05-25", "peso": 108.3, "tbm": 2105.5, "gasto": 2105.5, "consumo": 2400.0, "saldo": -294.5}, {"data": "2025-05-26", "peso": 107.7, "tbm": 2099.5, "gasto": 2105.3, "consumo": 1500.0, "saldo": 605.3}, {"data": "2025-05-27", "peso": 107.4, "tbm": 2096.5, "gasto": 2099.4, "consumo": 1750.0, "saldo": 349.4}, {"data": "2025-05-28", "peso": 106.8, "tbm": 2090.5, "gasto": 2097.18, "consumo": 2000.0, "saldo": 97.18}, {"data": "2025-05-29", "peso": 106.7, "tbm": 2089.5, "gasto": 2090.55, "consumo": 1800.0, "saldo": 290.55}, {"data": "2025-05-30", "peso": 106.4, "tbm": 2086.5, "gasto": 2089.54, "consumo": 2000.0, "saldo": 89.54}, {"data": "2025-05-31", "peso": 105.8, "tbm": 2080.5, "gasto": 2086.8, "consumo": 2400.0, "saldo": -313.2}, {"data": "2025-06-01", "peso": 106.3, "tbm": 2085.5, "gasto": 2081.42, "consumo": 2600.0, "saldo": -518.58}, {"data": "2025-06-02", "peso": 106.8, "tbm": 2090.5, "gasto": 2085.67, "consumo": 1700.0, "saldo": 385.67}, {"data": "2025-06-03", "peso": 106.7, "tbm": 2089.5, "gasto": 2090.47, "consumo": 1800.0, "saldo": 290.47}, {"data": "2025-06-04", "peso": 107.3, "tbm": 2095.5, "gasto": 2089.2, "consumo": 1800.0, "saldo": 289.2}, {"data": "2025-06-05", "peso": 106.5, "tbm": 2087.5, "gasto": 2095.7, "consumo": 1700.0, "saldo": 395.7}, {"data": "2025-06-06", "peso": 105.9, "tbm": 2081.5, "gasto": 2087.65, "consumo": 2000.0, "saldo": 87.65}, {"data": "2025-06-07", "peso": 105.0, "tbm": 2072.5, "gasto": 2081.95, "consumo": 2000.0, "saldo": 81.95}, {"data": "2025-06-08", "peso": 104.9, "tbm": 2071.5, "gasto": 2072.53, "consumo": 2000.0, "saldo": 72.53}, {"data": "2025-06-09", "peso": 105.3, "tbm": 2075.5, "gasto": 2071.33, "consumo": 1750.0, "saldo": 321.33}, {"data": "2025-06-10", "peso": 105.1, "tbm": 2073.5, "gasto": 2075.49, "consumo": 2100.0, "saldo": -24.51}, {"data": "2025-06-11", "peso": 105.1, "tbm": 2073.5, "gasto": 2073.5, "consumo": 2000.0, "saldo": 73.5}, {"data": "2025-06-12", "peso": 104.9, "tbm": 2071.5, "gasto": 2073.61, "consumo": 1700.0, "saldo": 373.61}, {"data": "2025-06-13", "peso": 104.4, "tbm": 2066.5, "gasto": 2071.62, "consumo": 1900.0, "saldo": 171.62}, {"data": "2025-06-14", "peso": 103.1, "tbm": 2053.5, "gasto": 2075.35, "consumo": 3000.0, "saldo": -924.65}, {"data": "2025-06-15", "peso": 103.5, "tbm": 2057.5, "gasto": 2056.3, "consumo": 2000.0, "saldo": 56.3}, {"data": "2025-06-16", "peso": 104.3, "tbm": 2065.5, "gasto": 2057.3, "consumo": 2000.0, "saldo": 57.3}, {"data": "2025-06-17", "peso": 103.6, "tbm": 2058.5, "gasto": 2066.08, "consumo": 2100.0, "saldo": -33.92}, {"data": "2025-06-18", "peso": 103.4, "tbm": 2056.5, "gasto": 2058.7, "consumo": 2200.0, "saldo": -141.3}, {"data": "2025-06-19", "peso": 102.2, "tbm": 2044.5, "gasto": 2056.45, "consumo": 2800.0, "saldo": -743.55}, {"data": "2025-06-20", "peso": 102.8, "tbm": 2050.5, "gasto": 2043.67, "consumo": 2300.0, "saldo": -256.33}, {"data": "2025-06-21", "peso": 102.7, "tbm": 2049.5, "gasto": 2051.13, "consumo": 5000.0, "saldo": -2948.87}, {"data": "2025-06-22", "peso": 104.1, "tbm": 2063.5, "gasto": 2042.76, "consumo": 2100.0, "saldo": -57.24}, {"data": "2025-06-23", "peso": 104.1, "tbm": 2063.5, "gasto": 2063.5, "consumo": 1750.0, "saldo": 313.5}, {"data": "2025-06-24", "peso": 103.1, "tbm": 2053.5, "gasto": 2064.92, "consumo": 1900.0, "saldo": 164.92}, {"data": "2025-06-25", "peso": 103.2, "tbm": 2054.5, "gasto": 2053.45, "consumo": 2300.0, "saldo": -246.55}, {"data": "2025-06-26", "peso": 103.1, "tbm": 2053.5, "gasto": 2054.55, "consumo": 2000.0, "saldo": 54.55}, {"data": "2025-06-27", "peso": 101.8, "tbm": 2040.5, "gasto": 2053.07, "consumo": 2200.0, "saldo": -146.93}, {"data": "2025-06-28", "peso": 101.8, "tbm": 2040.5, "gasto": 2040.5, "consumo": 2850.0, "saldo": -809.5}, {"data": "2025-06-29", "peso": 101.1, "tbm": 2033.5, "gasto": 2045.46, "consumo": 3000.0, "saldo": -954.54}, {"data": "2025-06-30", "peso": 101.1, "tbm": 2033.5, "gasto": 2033.5, "consumo": 2100.0, "saldo": -66.5}, {"data": "2025-07-01", "peso": 101.8, "tbm": 2040.5, "gasto": 2032.51, "consumo": 2000.0, "saldo": 32.51}, {"data": "2025-07-02", "peso": 101.4, "tbm": 2036.5, "gasto": 2042.13, "consumo": 2000.0, "saldo": 42.13}, {"data": "2025-07-03", "peso": 101.3, "tbm": 2035.5, "gasto": 2036.69, "consumo": 2400.0, "saldo": -363.31}, {"data": "2025-07-04", "peso": 101.4, "tbm": 2036.5, "gasto": 2035.5, "consumo": 2600.0, "saldo": -564.5}, {"data": "2025-07-05", "peso": 101.1, "tbm": 2033.5, "gasto": 2039.5, "consumo": 3400.0, "saldo": -1360.5}, {"data": "2025-07-06", "peso": 101.3, "tbm": 2035.5, "gasto": 2035.5, "consumo": 3000.0, "saldo": -964.5}, {"data": "2025-07-07", "peso": 101.4, "tbm": 2036.5, "gasto": 2036.5, "consumo": 1670.0, "saldo": 366.5}, {"data": "2025-07-08", "peso": 101.1, "tbm": 2033.5, "gasto": 2037.5, "consumo": 2300.0, "saldo": -262.5}, {"data": "2025-07-09", "peso": 100.2, "tbm": 2024.5, "gasto": 2038.75, "consumo": 2600.0, "saldo": -561.25}, {"data": "2025-07-10", "peso": 102.2, "tbm": 2044.5, "gasto": 2020.17, "consumo": 2300.0, "saldo": -279.83}, {"data": "2025-07-11", "peso": 101.9, "tbm": 2041.5, "gasto": 2045.33, "consumo": 2300.0, "saldo": -254.67}, {"data": "2025-07-12", "peso": 101.9, "tbm": 2041.5, "gasto": 2041.5, "consumo": 3800.0, "saldo": -1758.5}, {"data": "2025-07-13", "peso": 101.1, "tbm": 2033.5, "gasto": 2043.03, "consumo": 2900.0, "saldo": -856.97}, {"data": "2025-07-14", "peso": 101.3, "tbm": 2035.5, "gasto": 2032.83, "consumo": 3000.0, "saldo": -967.17}, {"data": "2025-07-15", "peso": 101.1, "tbm": 2033.5, "gasto": 2036.2, "consumo": 3000.0, "saldo": -963.8}, {"data": "2025-07-16", "peso": 101.52, "tbm": 2037.75, "gasto": 2030.45, "consumo": 3800.0, "saldo": -1769.55}, {"data": "2025-07-17", "peso": 101.95, "tbm": 2042.0, "gasto": 2036.49, "consumo": 3000.0, "saldo": -963.51}, {"data": "2025-07-18", "peso": 102.37, "tbm": 2046.25, "gasto": 2046.25, "consumo": 4000.0, "saldo": -1953.75}, {"data": "2025-07-19", "peso": 102.8, "tbm": 2050.5, "gasto": 2050.5, "consumo": 4000.0, "saldo": -1949.5}, {"data": "2025-07-20", "peso": 103.22, "tbm": 2054.75, "gasto": 2045.67, "consumo": 4000.0, "saldo": -1954.33}, {"data": "2025-07-21", "peso": 103.65, "tbm": 2059.0, "gasto": 2059.0, "consumo": 4000.0, "saldo": -1941.0}, {"data": "2025-07-22", "peso": 104.07, "tbm": 2063.25, "gasto": 2063.25, "consumo": 0.0, "saldo": 2063.25}, {"data": "2025-07-23", "peso": 104.5, "tbm": 2067.5, "gasto": 2060.18, "consumo": 2300.0, "saldo": -239.82}, {"data": "2025-07-24", "peso": 103.2, "tbm": 2054.5, "gasto": 2071.67, "consumo": 2300.0, "saldo": -228.33}, {"data": "2025-07-25", "peso": 102.3, "tbm": 2045.5, "gasto": 2056.9, "consumo": 3200.0, "saldo": -1143.1}, {"data": "2025-07-26", "peso": 103.9, "tbm": 2061.5, "gasto": 2028.3, "consumo": 4000.0, "saldo": -1971.7}, {"data": "2025-07-27", "peso": 103.9, "tbm": 2061.5, "gasto": 2061.5, "consumo": 3000.0, "saldo": -938.5}, {"data": "2025-07-28", "peso": 103.9, "tbm": 2061.5, "gasto": 2061.5, "consumo": 2200.0, "saldo": -138.5}, {"data": "2025-07-29", "peso": 104.9, "tbm": 2071.5, "gasto": 2058.75, "consumo": 1800.0, "saldo": 258.75}, {"data": "2025-07-30", "peso": 103.5, "tbm": 2057.5, "gasto": 2077.68, "consumo": 2400.0, "saldo": -322.32}, {"data": "2025-07-31", "peso": 103.3, "tbm": 2055.5, "gasto": 2057.99, "consumo": 2500.0, "saldo": -442.01}, {"data": "2025-08-01", "peso": 102.2, "tbm": 2044.5, "gasto": 2057.56, "consumo": 3200.0, "saldo": -1142.44}, {"data": "2025-08-02", "peso": 100.6, "tbm": 2028.5, "gasto": 2051.03, "consumo": 3400.0, "saldo": -1348.97}, {"data": "2025-08-03", "peso": 102.5, "tbm": 2047.5, "gasto": 2002.85, "consumo": 4000.0, "saldo": -1997.15}, {"data": "2025-08-04", "peso": 103.0, "tbm": 2052.5, "gasto": 2046.27, "consumo": 2550.0, "saldo": -503.73}, {"data": "2025-08-05", "peso": 103.5, "tbm": 2057.5, "gasto": 2051.27, "consumo": 2500.0, "saldo": -448.73}, {"data": "2025-08-06", "peso": 103.2, "tbm": 2054.5, "gasto": 2058.7, "consumo": 3500.0, "saldo": -1441.3}, {"data": "2025-08-07", "peso": 103.3, "tbm": 2055.5, "gasto": 2054.25, "consumo": 6000.0, "saldo": -3945.75}, {"data": "2025-08-08", "peso": 104.9, "tbm": 2071.5, "gasto": 2055.57, "consumo": 3000.0, "saldo": -944.43}, {"data": "2025-08-09", "peso": 106.4, "tbm": 2086.5, "gasto": 2086.5, "consumo": 3000.0, "saldo": -913.5}, {"data": "2025-08-10", "peso": 105.9, "tbm": 2081.5, "gasto": 2088.58, "consumo": 3000.0, "saldo": -911.42}, {"data": "2025-08-11", "peso": 104.3, "tbm": 2065.5, "gasto": 2085.43, "consumo": 1850.0, "saldo": 235.43}, {"data": "2025-08-12", "peso": 104.3, "tbm": 2065.5, "gasto": 2065.5, "consumo": 1900.0, "saldo": 165.5}, {"data": "2025-08-13", "peso": 103.5, "tbm": 2057.5, "gasto": 2068.68, "consumo": 2600.0, "saldo": -531.32}, {"data": "2025-08-14", "peso": 102.4, "tbm": 2046.5, "gasto": 2060.53, "consumo": 2700.0, "saldo": -639.47}, {"data": "2025-08-15", "peso": 102.2, "tbm": 2044.5, "gasto": 2046.93, "consumo": 3500.0, "saldo": -1453.07}, {"data": "2025-08-16", "peso": 102.3, "tbm": 2045.5, "gasto": 2045.5, "consumo": 4000.0, "saldo": -1954.5}, {"data": "2025-08-17", "peso": 104.2, "tbm": 2064.5, "gasto": 1999.27, "consumo": 4500.0, "saldo": -2500.73}, {"data": "2025-08-18", "peso": 104.3, "tbm": 2065.5, "gasto": 2064.5, "consumo": 2400.0, "saldo": -335.5}, {"data": "2025-08-19", "peso": 102.9, "tbm": 2051.5, "gasto": 2069.35, "consumo": 2600.0, "saldo": -530.65}, {"data": "2025-08-20", "peso": 103.4, "tbm": 2056.5, "gasto": 2048.42, "consumo": 2800.0, "saldo": -751.58}, {"data": "2025-08-21", "peso": 102.8, "tbm": 2050.5, "gasto": 2058.15, "consumo": 2800.0, "saldo": -741.85}, {"data": "2025-08-22", "peso": 104.6, "tbm": 2068.5, "gasto": 2045.55, "consumo": 0.0, "saldo": 2045.55}];
-
-// ----- Estado -----
-let atividades = [];
-let historico = JSON.parse(localStorage.getItem("historico")) || [];
-let config = JSON.parse(localStorage.getItem("config")) || {altura:190, sexo:"M", dob:"", metaPeso:null, metaConsumo:null, metaAtividade:null};
-let catalogo = JSON.parse(localStorage.getItem("catalogoAtividades")) || [
-  {nome:"Corrida", met:8.3},
-  {nome:"Bicicleta Indoor", met:6.8},
-  {nome:"Caminhada", met:3.8},
-  {nome:"Musculação", met:3.5},
-  {nome:"Escada", met:8.0},
-  {nome:"Remo", met:7.0}
-];
-let dashRange = {de:null, ate:null};
-
-if (historico.length === 0 && INITIAL_HISTORICO && INITIAL_HISTORICO.length) {
-  historico = INITIAL_HISTORICO;
-  localStorage.setItem("historico", JSON.stringify(historico));
-  const last = historico[historico.length-1];
-  if (last && last.peso) localStorage.setItem("ultimoPeso", last.peso);
-}
-
-// ----- Tooltip helpers -----
-const chartsMeta = {};
-const tt = document.getElementById('tooltip');
-function showTT(text, x, y){ tt.textContent = text; tt.style.left = x+'px'; tt.style.top = y+'px'; tt.style.display='block'; }
-function hideTT(){ tt.style.display='none'; }
-
-function attachTooltip(id){
-  const c = document.getElementById(id);
-  if (!c || (chartsMeta[id] && chartsMeta[id].attached)) return;
-  c.addEventListener('mousemove', (e)=>{
-    const meta = chartsMeta[id]; if(!meta) return;
-    const rect = c.getBoundingClientRect();
-    const x = e.clientX - rect.left; const y = e.clientY - rect.top;
-    let found = null;
-    for(const b of (meta.bars||[])){
-      const y1 = b.h >= 0 ? b.y : b.y + b.h;
-      const y2 = b.h >= 0 ? b.y + b.h : b.y;
-      if (x>=b.x && x<=b.x+b.w && y>=y1 && y<=y2){ found = b; break; }
-    }
-    if(found){
-      const label = (meta.labels && meta.labels[found.i]) ? meta.labels[found.i] : ('#'+(found.i+1));
-      const val = meta.tooltipValues ? meta.tooltipValues[found.i] : found.value;
-      showTT(label + ': ' + Math.round(val), e.clientX, e.clientY);
-    } else hideTT();
-  });
-  c.addEventListener('mouseleave', hideTT);
-  chartsMeta[id] = Object.assign(chartsMeta[id]||{}, {attached:true});
-}
-
-// ----- Util -----
-function toggleCard(id, headerEl){
-  const body = document.getElementById(id);
-  const chev = headerEl.querySelector('.chev');
-  if(body.classList.contains('hidden')){ body.classList.remove('hidden'); chev.textContent='▲'; }
-  else { body.classList.add('hidden'); chev.textContent='▼'; }
-}
-function openConfig(){ document.getElementById('configModal').style.display='flex'; }
-function closeConfig(){ document.getElementById('configModal').style.display='none'; }
-
-function setToday(elId){
-  const d = new Date(); const pad=n=>String(n).padStart(2,'0');
-  const v = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  const el = document.getElementById(elId); if (el) el.value = v;
-}
-function toISO(d){
-  if (!d) return null;
-  const t = new Date(d);
-  if (isNaN(t)) return null;
-  const pad=n=>String(n).padStart(2,'0');
-  return `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
-}
-function parseISO(s){
-  if (!s) return null;
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if(!m) return null;
-  return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
-}
-
-// Idade por data usando DOB
-function idadeNaData(isoDate){
-  if (!config.dob) return config.idade || 30;
-  const d = parseISO(isoDate) || new Date();
-  const dob = parseISO(config.dob);
-  if (!dob) return config.idade || 30;
-  let age = d.getFullYear() - dob.getFullYear();
-  const m = d.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && d.getDate() < dob.getDate())) age--;
-  return age;
-}
-
-// Mifflin–St Jeor com idade na data
-function calcularTBMData(peso, isoDate){
-  const a=config.altura||170, i=idadeNaData(isoDate), s=config.sexo||"M";
-  if(s==="M") return 10*peso + 6.25*a - 5*i + 5;
-  else return 10*peso + 6.25*a - 5*i - 161;
-}
-function atualizarTBM(){
-  const pesoInput = parseFloat(document.getElementById("pesoValor").value);
-  const peso = !isNaN(pesoInput) && pesoInput>0 ? pesoInput :
-               (parseFloat(localStorage.getItem("ultimoPeso")) || (historico.length? historico[historico.length-1].peso:70));
-  const d = document.getElementById("pesoData").value || toISO(new Date());
-  const tbm = calcularTBMData(peso, d);
-  document.getElementById("tbmValor").innerHTML = "<strong>TBM:</strong> " + Math.round(tbm) + " kcal";
-  return tbm;
-}
-
-function kcalAtividade(met, tempoMin, pesoKg){
-  return met * 3.5 * pesoKg / 200 * tempoMin;
-}
-
-function setMET(){
-  const sel = document.getElementById('atividadeTipo');
-  const effort = parseInt(document.getElementById('atividadeEsforco').value || '3',10);
-  const base = parseFloat(sel.options[sel.selectedIndex].dataset.met);
-  const factorMap = {1:0.8, 2:0.9, 3:1.0, 4:1.1, 5:1.2};
-  const factor = factorMap[effort] || 1.0;
-  document.getElementById('atividadeMET').value = (base*factor).toFixed(1);
-}
-
-function adicionarAtividade(){
-  const tipo=document.getElementById("atividadeTipo").value;
-  const tempo=parseFloat(document.getElementById("atividadeTempo").value)||0;
-  const met=parseFloat(document.getElementById("atividadeMET").value)||0;
-  const peso=parseFloat(localStorage.getItem("ultimoPeso")) || (historico.length? historico[historico.length-1].peso:70);
-  const kcal=kcalAtividade(met, tempo, peso);
-  atividades.push({tipo,tempo,met,kcal});
-  renderAtividades();
-}
-
-function renderAtividades(){
-  const tbody=document.querySelector("#atividadeTabela tbody");
-  tbody.innerHTML="";
-  atividades.forEach((a,idx)=>{
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${a.tipo}</td><td>${Math.round(a.tempo)}</td><td>${a.met.toFixed(1)}</td><td>${Math.round(a.kcal)}</td>
-    <td><button onclick="excluirAtividade(${idx})">Excluir</button></td>`;
-    tbody.appendChild(tr);
-  });
-  atualizarGasto();
-}
-
-function excluirAtividade(i){ atividades.splice(i,1); renderAtividades(); }
-
-function atualizarGasto(){
-  const tbm=atualizarTBM();
-  const gastoAtiv = atividades.reduce((s,a)=>s+a.kcal,0);
-  const total=tbm+gastoAtiv;
-  document.getElementById("gastoValor").innerHTML="<strong>Gasto:</strong> "+ Math.round(total) +" kcal";
-  return total;
-}
-
-function salvarPeso(){
-  const peso=parseFloat(document.getElementById("pesoValor").value);
-  if(!peso) return;
-  localStorage.setItem("ultimoPeso", peso);
-  atualizarTBM(); atualizarGasto();
-}
-
-function toggleMacros(){ document.getElementById("macrosDiv").classList.toggle("hidden"); }
-
-function atualizarSaldo(consumo,gasto){
-  const saldo = Math.round(consumo - gasto);
-  document.getElementById("saldoTexto").innerHTML = "<strong>Saldo:</strong> " + saldo + " kcal";
-  const label=document.getElementById("saldoLabel");
-  if(saldo<0){ label.textContent="Déficit"; label.className="pill deficit"; }
-  else if(saldo===0){ label.textContent="Neutro"; label.className="pill neutro"; }
-  else { label.textContent="Superávit"; label.className="pill superavit"; }
-}
-
-function atualizarSaldoUI(){
-  const gasto = atualizarGasto();
-  const consumo = parseFloat(document.getElementById("consumoKcal").value)||0;
-  atualizarSaldo(consumo, gasto);
-}
-
-// ----- Charts with tooltips -----
-function niceStep(range, targetTicks=5){
-  const rough = range / targetTicks;
-  const pow10 = Math.pow(10, Math.floor(Math.log10(Math.max(rough,1e-9))));
-  const candidates = [1,2,2.5,5,10];
-  let best = candidates[0]*pow10;
-  let bestDiff = Math.abs(targetTicks - (range / best));
-  for(const c of candidates){
-    const step = c * pow10;
-    const diff = Math.abs(targetTicks - (range / step));
-    if(diff < bestDiff){ bestDiff = diff; best = step; }
-  }
-  return best;
-}
-
-function barChart(id, dados, titulo, opts={}){
-  const c=document.getElementById(id);
-  const ctx=c.getContext("2d");
-  const DPR = devicePixelRatio || 1;
-  const W = c.width = Math.floor(c.clientWidth * DPR);
-  const H = c.height = Math.floor(260 * DPR);
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  ctx.clearRect(0,0,W,H);
-
-  const padL=52, padR=12, padT=30, padB=56;
-  ctx.font="600 13px -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif";
-  ctx.fillStyle="#111827";
-  ctx.fillText(titulo,12,20);
-
-  if(!dados.length) return;
-
-  let filtered = dados.filter(v=>v!=null);
-  let minV = Math.min(...filtered);
-  let maxV = Math.max(...filtered);
-  if (opts.hline !== undefined){
-    if (Array.isArray(opts.hline)){
-      const vals = opts.hline.filter(v=>v!=null);
-      if(vals.length){ minV = Math.min(minV, ...vals); maxV = Math.max(maxV, ...vals); }
-    } else {
-      minV = Math.min(minV, opts.hline);
-      maxV = Math.max(maxV, opts.hline);
-    }
-  }
-  if (!isFinite(minV) || !isFinite(maxV)) { minV=0; maxV=1; }
-  if (minV===maxV){ minV = 0; maxV = (maxV||1)*1.2; }
-  const range = maxV - minV;
-  const yStep = niceStep(range, 5);
-  const yMin = Math.floor(minV / yStep) * yStep;
-  const yMax = Math.ceil(maxV / yStep) * yStep;
-
-  const innerW = (W/DPR - padL - padR);
-  const innerH = (H/DPR - padT - padB);
-
-  const count = Math.max(1, dados.length);
-  const gap = Math.max(2, innerW / count * 0.3);
-  const barW = Math.max(3, innerW / count - gap);
-
-  const X = (i)=> padL + i*(barW + gap);
-  const Y = (v)=> (H/DPR - padB) - ((v - yMin)/(yMax - yMin)) * innerH;
-
-  // grid & y labels
-  ctx.strokeStyle="#eef2f7"; ctx.lineWidth=1;
-  ctx.fillStyle="#94a3b8";
-  ctx.font="12px -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif";
-  for(let y=yMin; y<=yMax+1e-9; y+=yStep){
-    const yy = Y(y);
-    ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W/DPR - padR, yy); ctx.stroke();
-    ctx.fillText(String(Math.round(y)), 8, yy+4);
-  }
-
-  // x labels
-  const ticks = Math.min(7, dados.length);
-  ctx.fillStyle="#94a3b8";
-  ctx.textAlign="center";
-  for(let t=0;t<ticks;t++){
-    const idx = Math.round(t*(dados.length-1)/(ticks-1 || 1));
-    const xCenter = X(idx) + barW/2;
-    const label = (opts.labels && opts.labels[idx]) ? opts.labels[idx] : String(idx+1);
-    ctx.fillText(label, xCenter, H/DPR - 18);
-  }
-  ctx.textAlign="start";
-
-  // zero line
-  if (yMin < 0 && yMax > 0){
-    ctx.strokeStyle="#94a3b8"; ctx.beginPath();
-    ctx.moveTo(padL, Y(0)); ctx.lineTo(W/DPR - padR, Y(0)); ctx.stroke();
-  }
-
-  const barsMeta = [];
-  // bars
-  for(let i=0;i<dados.length;i++){
-    const v = dados[i];
-    if(v==null) continue;
-    const x = X(i);
-    const y = Y(Math.max(v,0));
-    const y0 = Y(Math.min(v,0));
-    const h = Math.abs(y0 - y);
-    let fill = opts.color || "rgba(0,0,0,0.7)";
-    if (typeof opts.perBarColor === "function") fill = opts.perBarColor(v,i);
-    ctx.fillStyle = fill;
-    ctx.fillRect(x, y, barW, Math.max(1,h));
-    barsMeta.push({i, x, y, w:barW, h:(y0-y), value:v});
-  }
-
-  // dashed hline (meta)
-  function drawHLine(val, label){
-    if(val==null || isNaN(val)) return;
-    const yy = Y(val);
-    ctx.save();
-    ctx.strokeStyle="#ef4444"; ctx.lineWidth=2; ctx.setLineDash([6,5]);
-    ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(W/DPR - padR, yy); ctx.stroke();
-    if(label){
-      ctx.fillStyle="#ef4444"; ctx.font="bold 12px -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif";
-      ctx.fillText(label, W/DPR - padR - 120, yy - 6);
-    }
-    ctx.restore();
-  }
-
-  if (Array.isArray(opts.hline)){
-    ctx.save(); ctx.strokeStyle="#ef4444"; ctx.lineWidth=2; ctx.setLineDash([6,5]);
-    let started=false;
-    for(let i=0;i<opts.hline.length;i++){
-      const v=opts.hline[i]; if(v==null) continue;
-      const x = X(i)+barW/2; const y = Y(v);
-      if(!started){ ctx.beginPath(); ctx.moveTo(x,y); started=true; } else { ctx.lineTo(x,y); }
-    }
-    if(started) ctx.stroke();
-    ctx.restore();
-    if(opts.hlineLabel){ drawHLine(opts.hline[opts.hline.length-1], opts.hlineLabel); }
-  } else if (opts.hline !== undefined){
-    drawHLine(opts.hline, opts.hlineLabel || "");
-  }
-
-  // MM7 overlay
-  if (opts.mm7){
-    const mm = [];
-    for(let i=0;i<dados.length;i++){ mm.push(i>=6 ? dados.slice(i-6,i+1).reduce((a,b)=>a+b,0)/7 : null); }
-    ctx.beginPath();
-    let started=false;
-    for(let i=0;i<mm.length;i++){
-      if(mm[i]==null) continue;
-      const x = X(i)+barW/2; const y = Y(mm[i]);
-      if(!started){ ctx.moveTo(x,y); started=true; } else { ctx.lineTo(x,y); }
-    }
-    ctx.strokeStyle="#ef4444"; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.stroke(); ctx.setLineDash([]);
-  }
-
-  // store meta for tooltips
-  chartsMeta[id] = { bars: barsMeta, labels: (opts.labels||[]), tooltipValues: (opts.tooltipValues||null), attached: chartsMeta[id]?.attached };
-  attachTooltip(id);
-}
-
-function aplicarRange(){
-  dashRange.de = document.getElementById("rangeDe").value || null;
-  dashRange.ate = document.getElementById("rangeAte").value || null;
-  desenharGraficos();
-}
-function limparRange(){
-  dashRange.de = null; dashRange.ate = null;
-  document.getElementById("rangeDe").value = "";
-  document.getElementById("rangeAte").value = "";
-  desenharGraficos();
-}
-
-function getHistoricoFiltrado(){
-  const de = dashRange.de;
-  const ate = dashRange.ate;
-  let arr = historico.slice();
-  if (de || ate) {
-    function inRange(dateISO, d1, d2){
-      const A = new Date(dateISO);
-      const d1d = d1? new Date(d1):null; const d2d = d2? new Date(d2):null;
-      if (d1d && A < d1d) return false;
-      if (d2d && A > d2d) return false;
-      return true;
-    }
-    arr = arr.filter(r=> r.data && inRange(r.data, de, ate));
-  } else {
-    const win = parseInt(document.getElementById("janela").value||"30",10);
-    if (arr.length > win) arr = arr.slice(-win);
-  }
-  return arr;
-}
-
-function desenharGraficos(){
-  const subset = getHistoricoFiltrado();
-
-  const pesos = subset.map(h=>h.peso||0);
-  const ativs = subset.map(h=> (h.gasto||0) - (h.tbm||0) );
-  const consumos = subset.map(h=>h.consumo||0);
-  const saldosOrig = subset.map(h=>h.saldo ?? ((h.consumo||0)-(h.gasto||0))); // negativo = déficit, positivo = superávit
-  const labels = subset.map(h=> (h.data||"").slice(5));
-
-  function absVal(x){ return x<0 ? -x : x; }
-  const saldosPlot = saldosOrig.map(v => (v < 0 ? absVal(v) : -absVal(v))); // déficit para cima (positivo), superávit para baixo (negativo)
-
-  // metas
-  const metaPeso = (config.metaPeso && !isNaN(config.metaPeso)) ? Number(config.metaPeso) : null;
-  const metaCons = (config.metaConsumo && !isNaN(config.metaConsumo)) ? Number(config.metaConsumo) : null;
-  const metaAtiv = (config.metaAtividade && !isNaN(config.metaAtividade)) ? Number(config.metaAtividade) : null;
-
-  barChart("graficoPeso",pesos,"Peso (kg)", {
-    labels,
-    color: getComputedStyle(document.documentElement).getPropertyValue('--bluePastel'),
-    hline: metaPeso, hlineLabel: metaPeso!=null ? "meta de peso" : null,
-    tooltipValues: pesos
-  });
-  barChart("graficoAtividade",ativs,"Atividade (kcal)", {
-    labels,
-    color: getComputedStyle(document.documentElement).getPropertyValue('--amberPastel'),
-    hline: metaAtiv, hlineLabel: (metaAtiv!=null ? "meta de atividade" : null),
-    tooltipValues: ativs
-  });
-  barChart("graficoConsumo",consumos,"Consumo (kcal)", {
-    labels,
-    color: getComputedStyle(document.documentElement).getPropertyValue('--violetPastel'),
-    hline: metaCons, hlineLabel: metaCons!=null ? "meta de consumo" : null,
-    tooltipValues: consumos
-  });
-  barChart("graficoSaldo",saldosPlot,"Saldo (kcal) — déficit ↑", {
-    labels, mm7:true,
-    perBarColor: (v,i)=> (saldosOrig[i] < 0 ? getComputedStyle(document.documentElement).getPropertyValue('--greenPastel')
-                                            : getComputedStyle(document.documentElement).getPropertyValue('--redPastel')),
-    tooltipValues: saldosOrig // tooltip mostra o saldo com sinal original
-  });
-}
-
-// Tabela últimos 30 dias (no card Dados)
-function renderHistoricoTabela(){
-  const tbody = document.querySelector("#historicoTabela tbody");
-  tbody.innerHTML = "";
-  const ultimos = historico.slice(-30);
-  ultimos.forEach(r=>{
-    const tr = document.createElement("tr");
-    const saldo = Math.round(r.saldo ?? ((r.consumo||0)-(r.gasto||0)));
-    tr.innerHTML = `<td>${r.data}</td><td>${(r.peso||0).toFixed(2)}</td><td>${Math.round(r.tbm||0)}</td><td>${Math.round(r.gasto||0)}</td><td>${Math.round(r.consumo||0)}</td><td>${saldo}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-// ----- Config & Catálogo de Atividades -----
-function salvarConfig(){
-  config.dob = document.getElementById("configDOB").value || config.dob || "";
-  config.altura = parseFloat(document.getElementById("configAltura").value)||config.altura||170;
-  config.sexo = document.getElementById("configSexo").value||config.sexo||"M";
-  config.metaPeso = parseFloat(document.getElementById("metaPeso").value)||null;
-  config.metaConsumo = parseFloat(document.getElementById("metaConsumo").value)||null;
-  config.metaAtividade = parseFloat(document.getElementById("metaAtividade").value)||null;
-  localStorage.setItem("config", JSON.stringify(config));
-  localStorage.setItem("catalogoAtividades", JSON.stringify(catalogo));
-  closeConfig(); atualizarTBM(); atualizarGasto(); desenharGraficos();
-}
-
-function renderCatalogoSelect(){
-  const sel = document.getElementById("atividadeTipo");
-  sel.innerHTML = "";
-  catalogo.forEach((item,i)=>{
-    const opt = document.createElement("option");
-    opt.value = item.nome; opt.textContent = item.nome; opt.dataset.met = item.met;
-    sel.appendChild(opt);
-  });
-  setMET();
-}
-
-function renderCatalogoConfig(){
-  const ul = document.getElementById("configAtvLista");
-  ul.innerHTML = "";
-  catalogo.forEach((item,idx)=>{
-    const li = document.createElement("li");
-    li.innerHTML = `<span><strong>${item.nome}</strong> — MET base: ${item.met}</span>
-                    <button onclick="removerTipoAtividade(${idx})">❌ Remover</button>`;
-    ul.appendChild(li);
-  });
-}
-
-function adicionarTipoAtividade(){
-  const nome = (document.getElementById("configAtvNome").value || "").trim();
-  const met = parseFloat(document.getElementById("configAtvMET").value);
-  if (!nome || isNaN(met) || met<=0){
-    alert("Informe nome e MET base válido (>0).");
-    return;
-  }
-  if (catalogo.some(c=>c.nome.toLowerCase()===nome.toLowerCase())){
-    alert("Esse tipo já existe.");
-    return;
-  }
-  catalogo.push({nome, met});
-  document.getElementById("configAtvNome").value="";
-  document.getElementById("configAtvMET").value="";
-  renderCatalogoSelect();
-  renderCatalogoConfig();
-  localStorage.setItem("catalogoAtividades", JSON.stringify(catalogo));
-}
-
-function removerTipoAtividade(idx){
-  catalogo.splice(idx,1);
-  renderCatalogoSelect();
-  renderCatalogoConfig();
-  localStorage.setItem("catalogoAtividades", JSON.stringify(catalogo));
-}
-
-// ----- Salvar dia -----
-function getDateInputISO(){
-  const v = document.getElementById("pesoData").value;
-  if (v) return v;
-  const d = new Date(); const pad=n=>String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
-
-function salvarDia(){
-  const data = getDateInputISO();
-  const pesoField = parseFloat(document.getElementById("pesoValor").value);
-  const peso = !isNaN(pesoField) && pesoField>0 ? pesoField :
-               (parseFloat(localStorage.getItem("ultimoPeso")) || (historico.length? historico[historico.length-1].peso:0));
-  const tbm = calcularTBMData(peso, data);
-  const gasto = atualizarGasto();
-  const consumo = parseFloat(document.getElementById("consumoKcal").value)||0;
-  const saldo = Math.round(consumo - gasto);
-
-  const idx = historico.findIndex(r=>r.data===data);
-  const rec = {data, peso: Number((peso||0).toFixed(2)), tbm: Math.round(tbm||0), gasto: Math.round(gasto||0), consumo: Math.round(consumo||0), saldo};
-  if (idx>=0) historico[idx] = rec; else historico.push(rec);
-
-  localStorage.setItem("historico", JSON.stringify(historico));
-  desenharGraficos();
-  renderHistoricoTabela();
-  alert("Dia salvo!");
-  atividades = []; renderAtividades();
-}
-
-// ----- Import / Export CSV -----
-function normalizeKey(s){ return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,""); }
-function detectDelimiter(headerLine){
-  const cands = [",",";","\t","|"]; let best = ","; let bestCount = 0;
-  for(const d of cands){ const count = headerLine.split(d).length-1; if(count > bestCount){ bestCount = count; best = d; } }
-  return best;
-}
-
-function exportarCSV(){
-  const headers = ["Data","Peso","TBM","Atividade","TBT","Consumo","Déficit"];
-  const rows = historico.map(h=>[h.data, h.peso, h.tbm, (h.gasto - h.tbm), h.gasto, h.consumo, (h.saldo ?? (h.consumo - h.gasto))]);
-  let csv = headers.join(",") + "\n";
-  rows.forEach(r=>{ csv += r.join(",") + "\n"; });
-  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "historico_calorico.csv";
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function importarCSV(){
-  const input = document.getElementById("csvInput");
-  if (!input.files || !input.files[0]) { alert("Selecione um arquivo CSV."); return; }
-  const file = input.files[0];
-  const reader = new FileReader();
-  reader.onload = (e)=>{
-    const text = e.target.result.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
-    const lines = text.split(/\n/).filter(l=>l.trim().length>0);
-    if (!lines.length) { alert("CSV vazio."); return; }
-
-    const headerRaw = lines[0];
-    const delim = detectDelimiter(headerRaw);
-    const headers = headerRaw.split(delim).map(h=>h.trim());
-    const norm = headers.map(normalizeKey);
-
-    function findIdx(aliases){
-      const al = aliases.map(normalizeKey);
-      for(let i=0;i<norm.length;i++){ if(al.includes(norm[i])) return i; }
-      return -1;
-    }
-
-    const idxData = findIdx(["data"]);
-    const idxPeso = findIdx(["peso"]);
-    const idxTBM  = findIdx(["tbm","tmb"]);
-    const idxAtiv = findIdx(["atividade","atividadekcal","metkcal"]);
-    const idxTBT  = findIdx(["tbt","gasto","gastototal"]);
-    const idxCons = findIdx(["consumo","kcalconsumo","kcal"]);
-    const idxDef  = findIdx(["deficit","déficit","saldo","dficit"]);
-
-    const missing = [];
-    if(idxData<0) missing.push("Data");
-    if(idxPeso<0) missing.push("Peso");
-    if(idxTBM<0) missing.push("TBM");
-    if(idxAtiv<0) missing.push("Atividade");
-    if(idxTBT<0) missing.push("TBT");
-    if(idxCons<0) missing.push("Consumo");
-    if(idxDef<0) missing.push("Déficit/Saldo");
-
-    if (missing.length){
-      alert("Cabeçalhos faltando: " + missing.join(", ") + "\nAchados: " + headers.join(", "));
-      return;
-    }
-
-    function parseNumberFlexible(s){
-      if (typeof s === "number") return s;
-      if (!s) return 0;
-      const ss = String(s).trim().replace(",", ".");
-      const v = parseFloat(ss);
-      return isNaN(v) ? 0 : v;
-    }
-    function parseDateFlexible(s){
-      if (!s) return null;
-      const t = String(s).trim();
-      let m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if(m) return `${m[1]}-${m[2]}-${m[3]}`;
-      m = t.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if(m) return `${m[3]}-${m[2]}-${m[1]}`;
-      const d = new Date(t);
-      if(!isNaN(d)) {
-        const pad=n=>String(n).padStart(2,'0');
-        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-      }
-      return null;
-    }
-
-    const newHist = [];
-    for (let i=1;i<lines.length;i++){
-      const parts = lines[i].split(delim).map(s=>s.trim());
-      if (!parts.length || parts.every(p=>p==="")) continue;
-      const data = parseDateFlexible(parts[idxData]);
-      if (!data) continue;
-      const peso = parseNumberFlexible(parts[idxPeso]);
-      const tbm = parseNumberFlexible(parts[idxTBM]);
-      const atividade = parseNumberFlexible(parts[idxAtiv]);
-      const gasto = parseNumberFlexible(parts[idxTBT]);
-      const consumo = parseNumberFlexible(parts[idxCons]);
-      const saldo = parseNumberFlexible(parts[idxDef]);
-      newHist.push({data,peso,tbm,gasto,consumo,saldo});
-    }
-
-    if (!newHist.length){ alert("Nenhuma linha válida encontrada."); return; }
-    historico = newHist;
-    localStorage.setItem("historico", JSON.stringify(historico));
-    desenharGraficos();
-    renderHistoricoTabela();
-    alert("Importação concluída!");
-  };
-  reader.readAsText(file, "utf-8");
-}
-
-// ----- Limpar dados / Excluir registros -----
-function parseISOToDate(iso){ const m=iso?.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m? new Date(+m[1],+m[2]-1,+m[3]) : null; }
-function inRange(dateISO, d1ISO, d2ISO){
-  if (!dateISO) return false;
-  const d = parseISOToDate(dateISO); if (!d) return false;
-  const d1 = d1ISO ? parseISOToDate(d1ISO) : null;
-  const d2 = d2ISO ? parseISOToDate(d2ISO) : null;
-  if (d1 && d < d1) return false;
-  if (d2 && d > d2) return false;
-  return true;
-}
-
-function limparDados(){
-  const de = document.getElementById("limpaDe").value || null;
-  const ate = document.getElementById("limpaAte").value || null;
-  const fPeso = document.getElementById("clrPeso").checked;
-  const fTBM = document.getElementById("clrTBM").checked;
-  const fGasto = document.getElementById("clrGasto").checked;
-  const fConsumo = document.getElementById("clrConsumo").checked;
-  const fSaldo = document.getElementById("clrSaldo").checked;
-
-  if(!fPeso && !fTBM && !fGasto && !fConsumo && !fSaldo){ alert("Selecione pelo menos um campo para limpar."); return; }
-
-  let count=0;
-  historico.forEach(r=>{
-    if (inRange(r.data, de, ate)){
-      if (fPeso) r.peso = 0;
-      if (fTBM) r.tbm = 0;
-      if (fGasto) r.gasto = 0;
-      if (fConsumo) r.consumo = 0;
-      if (fSaldo) r.saldo = 0;
-      count++;
-    }
-  });
-  localStorage.setItem("historico", JSON.stringify(historico));
-  desenharGraficos();
-  renderHistoricoTabela();
-  alert("Campos limpos em " + count + " registro(s).");
-}
-
-function excluirRegistros(){
-  const de = document.getElementById("limpaDe").value || null;
-  const ate = document.getElementById("limpaAte").value || null;
-  const before = historico.length;
-  historico = historico.filter(r=> !inRange(r.data, de, ate));
-  const removed = before - historico.length;
-  localStorage.setItem("historico", JSON.stringify(historico));
-  desenharGraficos();
-  renderHistoricoTabela();
-  alert("Removidos " + removed + " registro(s).");
-}
-
-// ----- Init -----
-(function init(){
-  setToday("pesoData");
-  setToday("limpaDe");
-  setToday("limpaAte");
-  document.getElementById("configDOB").value = config.dob || "";
-  document.getElementById("configAltura").value = config.altura||170;
-  document.getElementById("configSexo").value = config.sexo||"M";
-  document.getElementById("metaPeso").value = (config.metaPeso!=null? config.metaPeso : "");
-  document.getElementById("metaConsumo").value = (config.metaConsumo!=null? config.metaConsumo : "");
-  document.getElementById("metaAtividade").value = (config.metaAtividade!=null? config.metaAtividade : "");
-
-  renderCatalogoSelect();
-  renderCatalogoConfig();
-  setMET();
-  atualizarGasto();
-  desenharGraficos();
-  renderHistoricoTabela();
-})();
-</script>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, setDoc, doc, query, where, onSnapshot, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const { useState, useEffect, useMemo } = React;
+
+        const Icon = ({ name, className, onClick }) => {
+            React.useEffect(() => { lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} className={className} onClick={onClick}></i>;
+        };
+
+        // CONFIGURAÇÃO FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyDIi4ze3AqhiLFCN66F3ije-8z1HrXmJPc",
+            authDomain: "runnerpro.firebaseapp.com",
+            projectId: "runnerpro",
+            storageBucket: "runnerpro.firebasestorage.app",
+            messagingSenderId: "519704813498",
+            appId: "1:519704813498:web:86885c46ba568ddcd70783",
+            measurementId: "G-2HVE5XR6X4"
+        };
+
+        let auth, db, googleProvider;
+        const isFirebaseConfigured = !!firebaseConfig.apiKey;
+
+        if (isFirebaseConfigured) {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                googleProvider = new GoogleAuthProvider();
+            } catch (error) { console.error("Firebase Error:", error); }
+        }
+
+        // UTILS
+        const displayDate = (dateString) => {
+            if(!dateString || typeof dateString !== 'string') return "-";
+            try {
+                const parts = dateString.split('-');
+                if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                return dateString;
+            } catch (e) { return dateString; }
+        };
+
+        // Helper para converter minutos decimais em HH:MM:SS string
+        const minutesToTimeStr = (totalMinutes) => {
+            if (!totalMinutes || isNaN(totalMinutes)) return "00:00:00";
+            const h = Math.floor(totalMinutes / 60);
+            const m = Math.floor(totalMinutes % 60);
+            const s = Math.round((totalMinutes - Math.floor(totalMinutes)) * 60);
+            const pad = (n) => n.toString().padStart(2, '0');
+            return `${pad(h)}:${pad(m)}:${pad(s)}`;
+        };
+
+        const formatPace = (decimalPace) => {
+            if (!decimalPace || decimalPace === Infinity || isNaN(decimalPace)) return "0:00";
+            const min = Math.floor(decimalPace);
+            const sec = Math.round((decimalPace - min) * 60);
+            return `${min}:${sec.toString().padStart(2, '0')}`;
+        };
+
+        const calculateAge = (dob) => {
+            if(!dob) return 30; 
+            const diff = Date.now() - new Date(dob).getTime();
+            return Math.abs(new Date(diff).getUTCFullYear() - 1970);
+        };
+
+        const calculateTMB = (weight, height, age, gender) => {
+            if (!weight || !height || !age) return 0;
+            let tmb = (10 * weight) + (6.25 * height) - (5 * age);
+            tmb += (gender === 'female') ? -161 : 5;
+            return tmb;
+        };
+
+        const calculateBurn = (met, weight, durationMin) => {
+            if(!met || !weight || !durationMin) return 0;
+            return met * 3.5 * (weight / 200) * durationMin;
+        };
+
+        const calculateMET = (distKm, timeMin) => {
+            if(!distKm || !timeMin || timeMin === 0) return 0;
+            const speedMetersPerMin = (distKm * 1000) / timeMin;
+            const vo2 = (0.2 * speedMetersPerMin) + (0.9 * speedMetersPerMin * 0.01) + 3.5;
+            return vo2 / 3.5;
+        };
+
+        const findClosestWeight = (targetDate, weights) => {
+            if(!weights || weights.length === 0) return null;
+            const sortedWeights = [...weights].filter(w => w && w.date).sort((a,b) => new Date(b.date) - new Date(a.date));
+            const match = sortedWeights.find(w => w.date <= targetDate);
+            return match ? parseFloat(match.weight) : (sortedWeights.length > 0 ? parseFloat(sortedWeights[sortedWeights.length-1].weight) : 70);
+        };
+
+        const predictMarathon = (longRuns) => {
+            if (!longRuns || longRuns.length === 0) return "—";
+            const validRuns = longRuns.filter(r => r && r.pace && r.distance > 0);
+            if (validRuns.length === 0) return "—";
+            
+            const bestLong = validRuns.reduce((prev, current) => (prev.pace < current.pace && prev.distance > 15) ? prev : current, validRuns[0]);
+            if (bestLong.distance < 10) return "—";
+            
+            const t1 = bestLong.duration; 
+            const d1 = bestLong.distance;
+            const d2 = 42.195;
+            const predictedTimeMin = t1 * Math.pow((d2 / d1), 1.06);
+            const h = Math.floor(predictedTimeMin / 60);
+            const m = Math.floor(predictedTimeMin % 60);
+            return `${h}h ${m}m`;
+        };
+
+        // --- CHARTS ---
+        const SimpleLineChart = ({ data, dataKey, color = "#10b981", height = 100 }) => {
+            const safeData = data ? data.filter(d => d && !isNaN(parseFloat(d[dataKey]))) : [];
+            if (safeData.length < 2) return <div className="text-xs text-gray-500 h-24 flex items-center justify-center">Dados insuficientes</div>;
+            const values = safeData.map(d => parseFloat(d[dataKey]) || 0);
+            const max = Math.max(...values) * 1.1;
+            const min = Math.min(...values) * 0.9;
+            const range = max - min || 1; 
+            const points = values.map((val, idx) => {
+                const x = (idx / (values.length - 1)) * 100;
+                const y = 100 - ((val - min) / range) * 100;
+                return `${x},${y}`;
+            }).join(" ");
+            return (
+                <div className="w-full relative" style={{ height: `${height}px` }}>
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                        <polyline fill="none" stroke={color} strokeWidth="2" points={points} vectorEffect="non-scaling-stroke"/>
+                        {values.map((val, idx) => {
+                            const x = (idx / (values.length - 1)) * 100;
+                            const y = 100 - ((val - min) / range) * 100;
+                            return <circle key={idx} cx={x} cy={y} r="3" fill={color} className="opacity-0 hover:opacity-100 transition-opacity cursor-pointer"><title>{val}</title></circle>
+                        })}
+                    </svg>
+                </div>
+            );
+        };
+
+        // --- SCREENS ---
+        const LoginScreen = ({ onLogin, isDark, toggleTheme, isOnline }) => {
+            const [isLoading, setIsLoading] = useState(false);
+            const [errorMsg, setErrorMsg] = useState('');
+
+            const handleGuestLogin = () => {
+                onLogin({ uid: 'guest_user', name: 'Convidado Local', email: 'offline@runnerpro.local', photo: null, isAnonymous: true });
+            };
+
+            const handleGoogle = async () => {
+                setIsLoading(true); setErrorMsg('');
+                if(!isFirebaseConfigured) { handleGuestLogin(); return; }
+                try { await signInWithPopup(auth, googleProvider); } 
+                catch(e) { 
+                    if(e.code === 'auth/unauthorized-domain') setErrorMsg("Domínio não autorizado. Use 'Sem conta' por enquanto.");
+                    else if(e.code === 'auth/popup-closed-by-user') setErrorMsg("Login cancelado.");
+                    else setErrorMsg(e.message);
+                    setIsLoading(false);
+                }
+            };
+
+            return (
+                <div className={`min-h-screen flex flex-col items-center justify-center p-4 transition-colors duration-500 ${isDark ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+                    <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30"><Icon name="activity" className="w-8 h-8 text-white"/></div>
+                    <h1 className="text-3xl font-bold mb-2">RunnerPro</h1>
+                    <p className={`mb-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Coach Metabólico & Performance</p>
+                    <div className="w-full max-w-sm space-y-4">
+                        <button onClick={handleGoogle} disabled={isLoading} className={`w-full py-3.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg ${isDark ? 'bg-white text-slate-900 hover:bg-gray-100' : 'bg-white text-slate-900 border border-gray-200 hover:bg-gray-50'}`}>
+                            {isLoading ? 'Conectando...' : <><Icon name="log-in" className="w-5 h-5"/> Entrar com Google</>}
+                        </button>
+                        <div className="relative flex items-center justify-center py-2"><div className={`absolute inset-0 flex items-center`}> <div className={`w-full border-t ${isDark ? 'border-slate-800' : 'border-gray-200'}`}></div></div><span className={`relative px-3 text-xs uppercase tracking-wider ${isDark ? 'bg-slate-950 text-gray-500' : 'bg-gray-50 text-gray-400'}`}>ou</span></div>
+                        <button onClick={handleGuestLogin} className={`w-full py-3.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all border-2 ${isDark ? 'border-slate-800 text-slate-300 hover:bg-slate-800' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}><Icon name="user-x" className="w-5 h-5"/> Continuar sem conta (Offline)</button>
+                    </div>
+                    {errorMsg && <div className="mt-6 p-3 rounded bg-red-500/10 border border-red-500/20 text-red-500 text-xs text-center max-w-sm">{errorMsg}</div>}
+                    <div className="mt-8 flex gap-2 items-center">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center ${isFirebaseConfigured ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' : 'bg-orange-500/10 text-orange-500 border-orange-500/30'}`}>{isFirebaseConfigured ? <><Icon name="wifi" className="w-3 h-3 mr-1"/> Online</> : <><Icon name="wifi-off" className="w-3 h-3 mr-1"/> Local</>}</span>
+                        <button onClick={toggleTheme} className={`text-xs flex items-center gap-1 px-3 py-1 rounded-full transition-colors ${isDark ? 'text-gray-500 hover:bg-slate-800' : 'text-gray-400 hover:bg-white border border-gray-200'}`}>{isDark ? <Icon name="sun" className="w-3 h-3"/> : <Icon name="moon" className="w-3 h-3"/>} Tema</button>
+                    </div>
+                </div>
+            );
+        };
+
+        const Sidebar = ({ view, setView, isDark, toggleTheme, isOpen, setIsOpen, handleLogout }) => {
+            const items = [
+                {id: 'dashboard', icon: 'layout-dashboard', label: 'Dashboard'},
+                {id: 'history', icon: 'clipboard-list', label: 'Histórico'},
+                {id: 'weight', icon: 'scale', label: 'Peso Corporal'},
+                {id: 'metabolic', icon: 'flame', label: 'Metabólico'},
+                {id: 'equipment', icon: 'package', label: 'Equipamentos'},
+                {id: 'settings', icon: 'settings', label: 'Configurações'},
+            ];
+            return (
+                <>
+                    {isOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={()=>setIsOpen(false)}></div>}
+                    <aside className={`fixed top-0 left-0 h-full w-64 border-r z-50 transition-transform duration-300 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
+                        <div className="p-6 flex items-center justify-between">
+                            <div className="flex items-center gap-3"><div className="w-8 h-8 rounded bg-emerald-500 flex items-center justify-center text-white"><Icon name="activity" className="w-5 h-5"/></div><span className={`font-bold text-xl ${isDark ? 'text-white' : 'text-slate-900'}`}>RunnerPro</span></div>
+                            <button onClick={()=>setIsOpen(false)} className="md:hidden text-gray-400"><Icon name="x" className="w-6 h-6"/></button>
+                        </div>
+                        <nav className="px-4 py-4 space-y-1">
+                            {items.map(item => (
+                                <button key={item.id} onClick={()=>{setView(item.id); setIsOpen(false);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === item.id ? 'bg-emerald-500/10 text-emerald-500 font-bold' : (isDark ? 'text-gray-400 hover:bg-slate-800 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-slate-900')}`}><Icon name={item.icon} className="w-5 h-5"/>{item.label}</button>
+                            ))}
+                        </nav>
+                        <div className={`absolute bottom-0 w-full p-4 border-t space-y-2 ${isDark ? 'border-slate-800' : 'border-gray-200'}`}>
+                            <button onClick={toggleTheme} className={`w-full flex items-center gap-3 px-4 py-2 text-sm ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-slate-900'}`}><Icon name={isDark ? 'sun' : 'moon'} className="w-4 h-4"/> Alternar Tema</button>
+                            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-red-400 hover:text-red-500 text-sm"><Icon name="log-out" className="w-4 h-4"/> Sair</button>
+                        </div>
+                    </aside>
+                </>
+            );
+        };
+
+        // --- VIEWS ---
+        const WeightView = ({ weights, setWeights, isOnline, user }) => {
+            const [date, setDate] = useState(new Date().toISOString().substr(0, 10));
+            const [kg, setKg] = useState('');
+            const handleSave = async (e) => {
+                e.preventDefault();
+                if(!kg) return;
+                const data = { date, weight: parseFloat(kg), createdAt: new Date().toISOString() };
+                if(isOnline && !user.isAnonymous) { await addDoc(collection(db, `users/${user.uid}/weights`), data); } 
+                else { setWeights(prev => [...prev, {...data, id: Date.now().toString()}].sort((a,b) => new Date(b.date) - new Date(a.date))); }
+                setKg('');
+            };
+            const handleDelete = async (id) => {
+                if(!confirm("Apagar?")) return;
+                if(isOnline && !user.isAnonymous) await deleteDoc(doc(db, `users/${user.uid}/weights`, id));
+                else setWeights(prev => prev.filter(w => w.id !== id));
+            };
+            const handleImport = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    const text = event.target.result;
+                    const lines = text.split('\n');
+                    const batch = [];
+                    lines.forEach(line => {
+                        const parts = line.split(/[;,]/);
+                        if(parts.length >= 2) {
+                            let dateStr = parts[0].trim();
+                            let weightVal = parseFloat(parts[1].replace(',', '.'));
+                            if(dateStr.includes('/')) { const [d, m, y] = dateStr.split('/'); if(y.length === 4) dateStr = `${y}-${m}-${d}`; }
+                            if(!isNaN(weightVal) && dateStr.length === 10) { batch.push({ date: dateStr, weight: weightVal, createdAt: new Date().toISOString() }); }
+                        }
+                    });
+                    if(confirm(`Importar ${batch.length} registros de peso?`)) {
+                        if(isOnline && !user.isAnonymous) { for(let w of batch) await addDoc(collection(db, `users/${user.uid}/weights`), w); } 
+                        else { setWeights(prev => [...prev, ...batch].sort((a,b) => new Date(b.date) - new Date(a.date))); }
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            };
+            return (
+                <div className="space-y-6 pb-20 animate-fade-in">
+                    <div className="flex justify-between items-center"><h2 className="text-2xl font-bold">Controle de Peso</h2><label className="cursor-pointer bg-slate-800 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-700 transition-colors"><Icon name="upload" className="w-3 h-3"/> Importar CSV<input type="file" accept=".csv" className="hidden" onChange={handleImport}/></label></div>
+                    <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 flex gap-4 items-end shadow-sm">
+                        <div className="flex-1"><label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Data</label><input type="date" value={date} onChange={e=>setDate(e.target.value)} className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded p-2 text-gray-900 dark:text-white outline-none focus:border-emerald-500"/></div>
+                        <div className="flex-1"><label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Peso (kg)</label><input type="number" step="0.1" value={kg} onChange={e=>setKg(e.target.value)} className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded p-2 text-gray-900 dark:text-white outline-none focus:border-emerald-500" placeholder="00.0"/></div>
+                        <button className="bg-emerald-600 p-2.5 rounded-lg text-white hover:bg-emerald-700 transition-colors"><Icon name="plus" className="w-5 h-5"/></button>
+                    </form>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                        <table className="w-full text-sm text-left"><thead className="bg-gray-50 dark:bg-slate-900/50 text-gray-500 dark:text-gray-400 text-xs uppercase"><tr><th className="p-3">Data</th><th className="p-3">Peso</th><th className="p-3 text-right">Ação</th></tr></thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                                {weights.map(w => (<tr key={w.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30"><td className="p-3">{displayDate(w.date)}</td><td className="p-3 font-bold text-emerald-600 dark:text-emerald-400">{w.weight} kg</td><td className="p-3 text-right"><button onClick={()=>handleDelete(w.id)} className="text-red-400 hover:text-red-600"><Icon name="trash-2" className="w-4 h-4"/></button></td></tr>))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        const MetabolicView = ({ workouts, weights, biometrics, consumption, setConsumption, user, isOnline }) => {
+            const data = useMemo(() => {
+                const map = {};
+                workouts.forEach(w => {
+                    if(!w || !w.date) return;
+                    if(!map[w.date]) map[w.date] = { date: w.date, activities: [], totalActivityKcal: 0, consumption: 0 };
+                    const closestWeight = findClosestWeight(w.date, weights) || (biometrics.weight || 70); 
+                    let burn = 0;
+                    const dur = parseFloat(w.duration) || 0;
+                    if(w.isDistance && w.met) { burn = calculateBurn(w.met, closestWeight, dur); } 
+                    else { burn = calculateBurn(6, closestWeight, dur); }
+                    map[w.date].activities.push({ ...w, burn });
+                    map[w.date].totalActivityKcal += burn;
+                    map[w.date].weight = closestWeight;
+                });
+                const today = new Date();
+                const days = [];
+                for(let i=0; i<30; i++) {
+                    const d = new Date(); d.setDate(today.getDate() - i);
+                    const iso = d.toISOString().substr(0,10);
+                    const dayData = map[iso] || { date: iso, activities: [], totalActivityKcal: 0 };
+                    dayData.weight = findClosestWeight(iso, weights) || (biometrics.weight || 70);
+                    const age = calculateAge(biometrics.dob);
+                    dayData.tmb = calculateTMB(dayData.weight, biometrics.height, age, biometrics.gender);
+                    const cons = consumption.find(c => c && c.date === iso);
+                    dayData.consumption = cons ? cons.kcal : '';
+                    dayData.consId = cons ? cons.id : null;
+                    days.push(dayData);
+                }
+                return days;
+            }, [workouts, weights, biometrics, consumption]);
+
+            const handleConsumptionChange = async (date, val, id) => {
+                const kcal = parseInt(val);
+                if(isOnline && !user.isAnonymous) {
+                    if(id) { if(isNaN(kcal)) await deleteDoc(doc(db, `users/${user.uid}/consumption`, id)); else await updateDoc(doc(db, `users/${user.uid}/consumption`, id), { kcal }); } 
+                    else if(!isNaN(kcal)) { await addDoc(collection(db, `users/${user.uid}/consumption`), { date, kcal }); }
+                } else {
+                    if(id) setConsumption(prev => prev.map(c => c.id === id ? { ...c, kcal: kcal || 0 } : c));
+                    else setConsumption(prev => [...prev, { id: Date.now().toString(), date, kcal: kcal || 0 }]);
+                }
+            };
+
+            return (
+                <div className="space-y-6 pb-20 animate-fade-in">
+                    <h2 className="text-2xl font-bold">Compilado Metabólico</h2>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-x-auto shadow-sm">
+                        <table className="w-full text-sm text-left whitespace-nowrap"><thead className="bg-gray-50 dark:bg-slate-900/50 text-gray-500 dark:text-gray-400 text-xs uppercase"><tr><th className="p-3">Data</th><th className="p-3">Peso (kg)</th><th className="p-3 text-blue-500 dark:text-blue-400">TMB (Basal)</th><th className="p-3 text-orange-500 dark:text-orange-400">Atividade</th><th className="p-3 text-emerald-500 dark:text-emerald-400">Gasto Total</th><th className="p-3">Consumo (Input)</th><th className="p-3">Balanço</th></tr></thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-slate-700">{data.map(day => (<tr key={day.date} className="hover:bg-gray-50 dark:hover:bg-slate-700/30"><td className="p-3">{displayDate(day.date)}</td><td className="p-3">{day.weight}</td><td className="p-3">{day.tmb.toFixed(0)}</td><td className="p-3">{day.totalActivityKcal.toFixed(0)}</td><td className="p-3 font-bold">{(day.tmb + day.totalActivityKcal).toFixed(0)}</td><td className="p-3"><input type="number" className="w-20 bg-gray-100 dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded p-1 text-center outline-none focus:border-emerald-500" placeholder="Kcal" value={day.consumption} onChange={(e) => handleConsumptionChange(day.date, e.target.value, day.consId)}/></td><td className={`p-3 font-bold ${day.consumption - (day.tmb + day.totalActivityKcal) > 0 ? 'text-red-500 dark:text-red-400' : 'text-emerald-500 dark:text-emerald-400'}`}>{day.consumption ? (day.consumption - (day.tmb + day.totalActivityKcal)).toFixed(0) : '-'}</td></tr>))}</tbody>
+                        </table>
+                    </div>
+                    <div className="text-xs text-gray-500 space-y-1 p-4 border-t border-gray-200 dark:border-slate-800"><p><strong>Notas de Cálculo:</strong></p><p>• <strong>TMB:</strong> Fórmula de Mifflin-St. Jeor (Requer altura, peso, idade e gênero configurados).</p><p>• <strong>Atividade:</strong> MET * 3.5 * Peso / 200 * Minutos.</p><p>• ⚠️ <strong>Atenção:</strong> Se você não registrar o peso, o sistema usará o último registrado ou um padrão de 70kg.</p></div>
+                </div>
+            );
+        };
+
+        const Dashboard = ({ workouts, weights }) => {
+            const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+            const [filterMonth, setFilterMonth] = useState(new Date().getMonth());
+            
+            // PROTECTED DASHBOARD LOGIC
+            const filteredData = useMemo(() => {
+                return workouts.filter(w => {
+                    if(!w || !w.date) return false;
+                    try {
+                        const parts = w.date.split('-');
+                        if(parts.length !== 3) return false;
+                        const month = parseInt(parts[1]) - 1; 
+                        const year = parseInt(parts[0]);
+                        return year === filterYear && (filterMonth === 'all' || month === parseInt(filterMonth));
+                    } catch(e) { return false; }
+                });
+            }, [workouts, filterYear, filterMonth]);
+            
+            const volumeKm = filteredData.reduce((a,b) => a + (b.isDistance ? (parseFloat(b.distance)||0) : 0), 0);
+            const volumeMET = filteredData.reduce((a,b) => a + ((parseFloat(b.met)||0) * (parseFloat(b.duration)||0)), 0); 
+            
+            // Safe Pace Calc
+            const validPaceRuns = filteredData.filter(x => (parseFloat(x.pace)||0) > 0);
+            const avgPace = validPaceRuns.length > 0 
+                ? validPaceRuns.reduce((a,b) => a + parseFloat(b.pace), 0) / validPaceRuns.length 
+                : 0;
+
+            return (
+                <div className="space-y-6 pb-20 animate-fade-in">
+                    <div className="flex gap-2 mb-6">
+                        <select value={filterYear} onChange={e=>setFilterYear(parseInt(e.target.value))} className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded p-2 text-sm">{[2023,2024,2025,2026].map(y => <option key={y} value={y}>{y}</option>)}</select>
+                        <select value={filterMonth} onChange={e=>setFilterMonth(e.target.value)} className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded p-2 text-sm"><option value="all">Ano Todo</option>{['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'].map((m,i)=><option key={i} value={i}>{m}</option>)}</select>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm"><div className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-1">Volume Total</div><div className="text-2xl font-bold text-emerald-500 dark:text-emerald-400">{volumeKm.toFixed(1)} <span className="text-sm text-gray-400 dark:text-gray-500">km</span></div></div>
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm"><div className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-1">Carga (MET.min)</div><div className="text-2xl font-bold text-orange-500 dark:text-orange-400">{volumeMET.toFixed(0)}</div></div>
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm"><div className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-1">Pace Médio</div><div className="text-2xl font-bold text-blue-500 dark:text-blue-400">{avgPace > 0 ? `${Math.floor(avgPace)}:${Math.round((avgPace%1)*60).toString().padStart(2,'0')}` : '-'}</div></div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm"><h3 className="font-semibold mb-4 flex items-center text-sm uppercase text-gray-500 dark:text-gray-400"><Icon name="scale" className="w-4 h-4 mr-2"/> Evolução de Peso</h3><SimpleLineChart data={[...weights].reverse()} dataKey="weight" color="#f472b6" height={150} /></div>
+                </div>
+            );
+        };
+
+        const EquipmentView = ({ shoes, setShoes, isDark, isOnline, user, workouts }) => {
+            const [newShoe, setNewShoe] = useState({ name: '', brand: '', maxKm: 800 });
+            const handleAddShoe = async (e) => {
+                e.preventDefault();
+                if (!newShoe.name) return;
+                const shoeData = { ...newShoe, active: true, createdAt: new Date().toISOString() };
+                if (isOnline && !user?.isAnonymous) { await addDoc(collection(db, `users/${user.uid}/shoes`), shoeData); } 
+                else { setShoes(prev => [...prev, { ...shoeData, id: Date.now().toString() }]); }
+                setNewShoe({ name: '', brand: '', maxKm: 800 });
+            };
+            const deleteItem = async (id) => {
+                if(!confirm("Remover este tênis?")) return;
+                if(isOnline && !user?.isAnonymous) { await deleteDoc(doc(db, `users/${user.uid}/shoes`, id)); } 
+                else { setShoes(prev => prev.filter(s => s.id !== id)); }
+            };
+            const getMileage = (shoeId) => { return workouts.filter(w => w.shoeId == shoeId && w.isDistance).reduce((acc, curr) => acc + (parseFloat(curr.distance) || 0), 0); };
+            return (
+                <div className="space-y-6 pb-24 md:pb-10 animate-fade-in">
+                    <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Meus Equipamentos</h2>
+                    <form onSubmit={handleAddShoe} className={`p-4 rounded-xl border flex flex-col md:flex-row gap-4 items-end ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                        <div className="flex-1 w-full"><label className="text-xs mb-1 block opacity-70">Modelo</label><input className={`w-full rounded p-2 border ${isDark ? 'bg-slate-900 border-slate-600 text-white' : 'bg-white border-gray-300'}`} value={newShoe.name} onChange={e => setNewShoe({...newShoe, name: e.target.value})} placeholder="Ex: Pegasus 40" /></div>
+                        <div className="flex-1 w-full"><label className="text-xs mb-1 block opacity-70">Marca</label><input className={`w-full rounded p-2 border ${isDark ? 'bg-slate-900 border-slate-600 text-white' : 'bg-white border-gray-300'}`} value={newShoe.brand} onChange={e => setNewShoe({...newShoe, brand: e.target.value})} placeholder="Nike" /></div>
+                        <div className="w-full md:w-32"><label className="text-xs mb-1 block opacity-70">Vida Útil (km)</label><input type="number" className={`w-full rounded p-2 border ${isDark ? 'bg-slate-900 border-slate-600 text-white' : 'bg-white border-gray-300'}`} value={newShoe.maxKm} onChange={e => setNewShoe({...newShoe, maxKm: e.target.value})} /></div>
+                        <button className="w-full md:w-auto bg-emerald-600 p-2.5 rounded text-white hover:bg-emerald-700"><Icon name="plus-circle" className="w-5 h-5 mx-auto"/></button>
+                    </form>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {shoes.map(shoe => {
+                            const currentKm = getMileage(shoe.id);
+                            const lifeLeft = Math.max(0, 100 - (currentKm / shoe.maxKm * 100));
+                            return (
+                                <div key={shoe.id} className={`p-5 rounded-xl border relative group ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}><Icon name="package" className="w-5 h-5 opacity-70"/></div><div><h3 className="font-bold">{shoe.brand} {shoe.name}</h3><span className="text-xs text-emerald-500">Ativo</span></div></div>
+                                        <button onClick={() => deleteItem(shoe.id)} className="text-gray-400 hover:text-red-500"><Icon name="trash-2" className="w-4 h-4"/></button>
+                                    </div>
+                                    <div><div className="flex justify-between text-xs font-medium mb-1 opacity-70"><span>{currentKm.toFixed(1)} km rodados</span><span>{shoe.maxKm} km max</span></div><div className={`h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}><div className={`h-full transition-all duration-500 ${lifeLeft < 20 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${(currentKm / shoe.maxKm) * 100}%` }}></div></div></div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const SettingsView = ({ user, workoutTypes, workouts, shoes, handleLogout, handleAddType, deleteItem, setWorkoutTypes, setWorkouts, setShoes, setUser, isDark, isOnline }) => {
+            const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200 shadow-sm';
+            const inputBg = isDark ? 'bg-slate-900 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900';
+            const [editingId, setEditingId] = useState(null);
+            const [editName, setEditName] = useState('');
+            const [editDist, setEditDist] = useState(false);
+
+            const handleImportData = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        if (importedData.workouts && importedData.settings && importedData.shoes) {
+                            if (confirm(`Importar backup?`)) {
+                                setWorkouts(importedData.workouts);
+                                setShoes(importedData.shoes);
+                                setWorkoutTypes(importedData.settings);
+                                alert("Importado com sucesso!");
+                            }
+                        } else { alert("Arquivo inválido."); }
+                    } catch (error) { alert("Erro ao ler arquivo."); }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            };
+
+            const startEdit = (t) => { setEditingId(t.id); setEditName(t.name); setEditDist(t.isDistance); };
+            const saveEdit = (id) => { setWorkoutTypes(prev => prev.map(t => t.id === id ? { ...t, name: editName, isDistance: editDist } : t)); setEditingId(null); };
+
+            return (
+                <div className="space-y-6 pb-24 md:pb-10 animate-fade-in">
+                    <div className="flex items-center justify-between"><h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Configurações</h2><button onClick={handleLogout} className="text-red-500 text-sm flex items-center hover:text-red-600 font-medium px-3 py-1 rounded bg-red-50 dark:bg-red-900/10"><Icon name="log-out" className="w-4 h-4 mr-1"/> Sair</button></div>
+                    <div className={`${cardBg} p-5 rounded-xl border`}>
+                        <h3 className={`font-medium mb-4 flex items-center ${isDark ? 'text-white' : 'text-gray-900'}`}><Icon name="settings" className="w-4 h-4 mr-2"/> Gerenciar Tipos de Treino</h3>
+                        <form onSubmit={handleAddType} className="flex gap-2 mb-4"><input name="typeName" required placeholder="Novo tipo..." className={`flex-1 rounded p-2 border ${inputBg} focus:outline-none focus:ring-2 focus:ring-emerald-500`}/><div className={`flex items-center px-3 rounded border ${isDark ? 'border-slate-600 bg-slate-900' : 'border-gray-300 bg-gray-50'}`}><input type="checkbox" name="typeIsDistance" id="chkDist" className="mr-2 accent-emerald-500"/><label htmlFor="chkDist" className="text-xs cursor-pointer">Corrida?</label></div><button className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700 transition-colors">Add</button></form>
+                        <ul className="space-y-2">{workoutTypes.map(t => (<li key={t.id} className={`flex justify-between items-center p-3 rounded-lg text-sm ${isDark ? 'bg-slate-900' : 'bg-gray-50 border border-gray-100'}`}>{editingId === t.id ? (<div className="flex flex-1 items-center gap-2"><input value={editName} onChange={e=>setEditName(e.target.value)} className={`flex-1 rounded p-1 border ${inputBg}`} /><label className="flex items-center text-xs"><input type="checkbox" checked={editDist} onChange={e=>setEditDist(e.target.checked)} className="mr-1"/> Corrida?</label><button onClick={()=>saveEdit(t.id)} className="text-emerald-500"><Icon name="check-square" className="w-4 h-4"/></button></div>) : (<span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t.name} <span className="text-xs ml-2 opacity-50">{t.isDistance ? '(Corrida)' : '(Outro)'}</span></span>)}<div className="flex gap-2">{!editingId && <button onClick={()=>startEdit(t)} className="text-blue-400 hover:text-blue-300"><Icon name="edit" className="w-4 h-4"/></button>}<button onClick={() => deleteItem(setWorkoutTypes, workoutTypes, t.id)} className="text-gray-400 hover:text-red-500"><Icon name="trash-2" className="w-4 h-4"/></button></div></li>))}</ul>
+                    </div>
+                    <div className={`${cardBg} p-5 rounded-xl border`}><h3 className={`font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Backup & Dados</h3><p className="text-xs mb-4 opacity-50">Exporte seus dados para segurança.</p><div className="flex flex-wrap gap-3"><button onClick={() => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ user, settings: workoutTypes, workouts, shoes })); const node = document.createElement('a'); node.setAttribute("href", dataStr); node.setAttribute("download", `runner_backup_${new Date().toISOString().slice(0,10)}.json`); document.body.appendChild(node); node.click(); node.remove(); }} className={`px-4 py-2 rounded-lg text-sm flex items-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}><Icon name="download" className="w-4 h-4 mr-2"/> Exportar JSON</button><label className={`cursor-pointer px-4 py-2 rounded-lg text-sm flex items-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}><Icon name="upload" className="w-4 h-4 mr-2"/> Importar JSON <input type="file" accept=".json" onChange={handleImportData} className="hidden" /></label></div></div>
+                </div>
+            );
+        };
+
+        const AddWorkoutModal = ({ isOpen, onClose, onSave, initialData, workoutTypes, shoes, isDark, isBulkEdit }) => {
+            if (!isOpen) return null;
+            const [formData, setFormData] = useState({ typeId: '1', date: new Date().toISOString().substr(0, 10), distance: '', duration: '', hrAvg: '', hrMax: '', power: '', rpe: '', elevation: '', notes: '', shoeId: '' });
+            const [durationStr, setDurationStr] = useState("");
+
+            // Reset or Load Data
+            useEffect(() => { 
+                if (isOpen) {
+                    if (initialData) { 
+                        setFormData({ ...formData, ...initialData }); 
+                        const totalMin = parseFloat(initialData.duration) || 0;
+                        if (totalMin > 0) {
+                            const h = Math.floor(totalMin / 60);
+                            const m = Math.floor(totalMin % 60);
+                            const s = Math.round((totalMin - Math.floor(totalMin)) * 60);
+                            const pad = (n) => n.toString().padStart(2, '0');
+                            setDurationStr(`${pad(h)}:${pad(m)}:${pad(s)}`);
+                        } else setDurationStr("");
+                    } else {
+                        // Reset form
+                        setFormData({ typeId: '1', date: new Date().toISOString().substr(0, 10), distance: '', duration: '', hrAvg: '', hrMax: '', power: '', rpe: '', elevation: '', notes: '', shoeId: '' });
+                        setDurationStr("");
+                    }
+                }
+            }, [isOpen, initialData]);
+
+            const handleSubmit = (e) => { 
+                e.preventDefault(); 
+                let totalMinutes = 0;
+                if (durationStr) {
+                    const parts = durationStr.split(':').map(p => parseInt(p) || 0);
+                    if (parts.length === 3) totalMinutes = parts[0] * 60 + parts[1] + parts[2] / 60;
+                    else if (parts.length === 2) totalMinutes = parts[0] * 60 + parts[1];
+                    else if (parts.length === 1) totalMinutes = parts[0];
+                }
+                // Ensure valid number string
+                onSave({ ...formData, duration: totalMinutes }); 
+            };
+            
+            const selectedType = workoutTypes.find(t => t.id === formData.typeId);
+            const isDistance = selectedType ? selectedType.isDistance : false;
+            const inputClass = `w-full rounded-lg p-2.5 border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`;
+            
+            return (
+                <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                    <div className={`rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto border ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+                        <div className={`flex justify-between items-center p-4 border-b ${isDark ? 'border-slate-800 bg-slate-800/50' : 'border-gray-100 bg-gray-50'}`}><h2 className={`text-lg font-bold flex items-center ${isDark ? 'text-white' : 'text-gray-800'}`}>{isBulkEdit ? 'Editar em Massa' : 'Registrar'}</h2><button onClick={onClose}><Icon name="x" className="w-6 h-6 text-gray-400"/></button></div>
+                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                            <div className="grid grid-cols-2 gap-5">
+                                <div><label className={`text-xs font-medium mb-1.5 block ${isDark?'text-gray-400':'text-gray-600'}`}>Tipo</label><select value={formData.typeId} onChange={e=>setFormData({...formData, typeId:e.target.value})} className={inputClass}>{workoutTypes.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
+                                <div><label className={`text-xs font-medium mb-1.5 block ${isDark?'text-gray-400':'text-gray-600'}`}>Data</label><input type="date" disabled={isBulkEdit} value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={inputClass}/></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-5">
+                                <div><label className={`text-xs font-medium mb-1.5 block ${isDark?'text-gray-400':'text-gray-600'}`}>Tempo (hh:mm:ss)</label><input type="text" placeholder="00:00:00" value={durationStr} onChange={e=>setDurationStr(e.target.value)} className={inputClass} /></div>
+                                <div><label className={`text-xs font-medium mb-1.5 block ${isDark?'text-gray-400':'text-gray-600'}`}>RPE (0-10)</label><input type="number" max="10" value={formData.rpe} onChange={e=>setFormData({...formData, rpe:e.target.value})} className={inputClass} placeholder="5"/></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-5">
+                                {isDistance && <div><label className={`text-xs font-medium mb-1.5 block ${isDark?'text-gray-400':'text-gray-600'}`}>Distância (km)</label><input type="number" step="0.01" value={formData.distance} onChange={e=>setFormData({...formData, distance:e.target.value})} className={inputClass}/></div>}
+                                <div><label className={`text-xs font-medium mb-1.5 block ${isDark?'text-gray-400':'text-gray-600'}`}>FC Média</label><input type="number" value={formData.hrAvg} onChange={e=>setFormData({...formData, hrAvg:e.target.value})} className={inputClass} placeholder="bpm"/></div>
+                            </div>
+                            {isDistance && <div className="grid grid-cols-2 gap-5">
+                                <div><label className={`text-xs font-medium mb-1.5 block ${isDark?'text-gray-400':'text-gray-600'}`}>Elevação (m)</label><input type="number" value={formData.elevation} onChange={e=>setFormData({...formData, elevation:e.target.value})} className={inputClass} placeholder="m"/></div>
+                                <div><label className={`text-xs font-medium mb-1.5 block ${isDark?'text-gray-400':'text-gray-600'}`}>Potência (W)</label><input type="number" value={formData.power} onChange={e=>setFormData({...formData, power:e.target.value})} className={inputClass} placeholder="W"/></div>
+                            </div>}
+                            <div><label className={`text-xs font-medium mb-1.5 block ${isDark?'text-gray-400':'text-gray-600'}`}>Tênis</label><select value={formData.shoeId} onChange={e=>setFormData({...formData, shoeId:e.target.value})} className={inputClass}><option value="">Selecione...</option>{shoes.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.brand} {s.name}</option>)}</select></div>
+                            <div><label className={`text-xs font-medium mb-1.5 block ${isDark?'text-gray-400':'text-gray-600'}`}>Obs</label><textarea rows="3" value={formData.notes} onChange={e=>setFormData({...formData, notes:e.target.value})} className={inputClass}></textarea></div>
+                            <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl">Salvar</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const HistoryView = ({ workouts, setWorkouts, workoutTypes, isDark, onEdit, onDuplicate, onDelete }) => {
+            const [selected, setSelected] = useState([]);
+            const [filterText, setFilterText] = useState('');
+            const [filterType, setFilterType] = useState('all');
+            
+            // SAFE FILTER & SORT
+            const filteredWorkouts = useMemo(() => {
+                if(!workouts) return [];
+                return workouts.filter(w => {
+                    if(!w) return false;
+                    const typeName = w.typeName || '';
+                    const notes = w.notes || '';
+                    const matchesText = notes.toLowerCase().includes(filterText.toLowerCase()) || typeName.toLowerCase().includes(filterText.toLowerCase());
+                    const matchesType = filterType === 'all' || w.typeId === filterType;
+                    return matchesText && matchesType;
+                });
+            }, [workouts, filterText, filterType]);
+            
+            const toggleSelect = (id) => setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+            const toggleSelectAll = () => selected.length === filteredWorkouts.length ? setSelected([]) : setSelected(filteredWorkouts.map(w => w.id));
+            const handleBulkDelete = () => { onDelete(selected); setSelected([]); };
+
+            // Import CSV Logic
+            const handleImport = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    const text = event.target.result;
+                    const lines = text.split('\n');
+                    const batch = [];
+                    lines.forEach(line => {
+                        const parts = line.split(/[;,]/);
+                        if(parts.length >= 2) {
+                            let dateStr = parts[0].trim();
+                            if(dateStr.includes('/')) { const [d, m, y] = dateStr.split('/'); if(y.length === 4) dateStr = `${y}-${m}-${d}`; }
+                            if(dateStr.length === 10) {
+                                batch.push({
+                                    date: dateStr,
+                                    duration: parseFloat(parts[2]) || 0,
+                                    distance: parseFloat(parts[3]) || 0,
+                                    rpe: parseFloat(parts[4]) || 5,
+                                    typeName: parts[1] || 'Importado',
+                                    typeId: '1', 
+                                    isDistance: true,
+                                    createdAt: new Date().toISOString()
+                                });
+                            }
+                        }
+                    });
+                    if(confirm(`Importar ${batch.length} atividades?`)) {
+                        setWorkouts(prev => [...prev, ...batch].sort((a,b) => new Date(b.date) - new Date(a.date)));
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            };
+
+            return (
+                <div className="space-y-6 pb-20 animate-fade-in">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <h2 className="text-2xl font-bold">Histórico</h2>
+                        <label className="cursor-pointer bg-slate-800 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-700 transition-colors"><Icon name="upload" className="w-3 h-3"/> Importar CSV<input type="file" accept=".csv" className="hidden" onChange={handleImport}/></label>
+                    </div>
+                    
+                    <div className="flex gap-2 w-full">
+                        <div className="relative flex-1"><Icon name="search" className={`absolute left-3 top-2.5 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}/><input type="text" placeholder="Buscar..." value={filterText} onChange={e => setFilterText(e.target.value)} className={`w-full pl-9 pr-4 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300'}`}/></div>
+                        <select value={filterType} onChange={e => setFilterType(e.target.value)} className={`rounded-lg px-3 py-2 border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300'}`}><option value="all">Todos</option>{workoutTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+                    </div>
+
+                    {selected.length > 0 && <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex justify-between items-center"><span className="text-emerald-500 text-sm font-bold">{selected.length} selecionados</span><div className="flex gap-2"><button onClick={()=>onDuplicate(selected)} className="px-3 py-1 rounded bg-slate-700/50 hover:bg-slate-700 text-blue-400 text-xs font-bold flex items-center"><Icon name="copy" className="w-3 h-3 mr-1"/> Duplicar</button><button onClick={handleBulkDelete} className="px-3 py-1 rounded bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs font-bold flex items-center"><Icon name="trash-2" className="w-3 h-3 mr-1"/> Deletar</button></div></div>}
+                    <div className={`rounded-xl border overflow-hidden overflow-x-auto ${isDark?'border-slate-700 bg-slate-800':'border-gray-200 bg-white'}`}>
+                        <table className="w-full min-w-[600px] text-sm text-left">
+                            <thead className={`uppercase text-xs ${isDark?'bg-slate-900/50':'bg-gray-50'}`}><tr><th className="p-3 w-10"><button onClick={toggleSelectAll}><Icon name={selected.length>0&&selected.length===filteredWorkouts.length?'check-square':'square'} className="w-4 h-4 opacity-50"/></button></th><th className="p-3">Data</th><th className="p-3">Tipo</th><th className="p-3">Dist</th><th className="p-3">Tempo</th><th className="p-3 text-emerald-500">Pace</th><th className="p-3 text-right">Ações</th></tr></thead>
+                            <tbody>
+                                {filteredWorkouts.map(w => {
+                                    // SAFE RENDER VALUES
+                                    const durVal = parseFloat(w.duration) || 0;
+                                    const paceVal = parseFloat(w.pace) || 0;
+                                    const typeLabel = w.typeName || 'Atividade';
+                                    
+                                    return (
+                                    <tr key={w.id} className={`border-b ${isDark?'border-slate-700 hover:bg-slate-700/50':'border-gray-100 hover:bg-gray-50'}`}>
+                                        <td className="p-3"><button onClick={()=>toggleSelect(w.id)}><Icon name={selected.includes(w.id)?'check-square':'square'} className={`w-4 h-4 ${selected.includes(w.id)?'text-emerald-500':'opacity-50'}`}/></button></td>
+                                        <td className="p-3">{displayDate(w.date)}</td>
+                                        <td className="p-3"><span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-xs font-bold">{typeLabel}</span></td>
+                                        <td className="p-3">{w.isDistance ? w.distance + 'km' : '-'}</td>
+                                        <td className="p-3">{Math.floor(durVal)}m {Math.round((durVal%1)*60)}s</td>
+                                        <td className="p-3 font-bold text-emerald-500">{w.isDistance ? formatPace(paceVal) : '-'}</td>
+                                        <td className="p-3 text-right flex justify-end gap-2">
+                                            <button onClick={()=>onDuplicate([w.id])} className="text-blue-400 hover:text-blue-300"><Icon name="copy" className="w-4 h-4"/></button>
+                                            <button onClick={()=>{onEdit(w)}} className="text-yellow-500 hover:text-yellow-400"><Icon name="edit" className="w-4 h-4"/></button>
+                                            <button onClick={()=>onDelete([w.id])} className="text-red-500 hover:text-red-400"><Icon name="trash-2" className="w-4 h-4"/></button>
+                                        </td>
+                                    </tr>
+                                )})}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )
+        };
+
+        const RunnerApp = () => {
+            const [user, setUser] = useState(null);
+            const [view, setView] = useState('dashboard');
+            const [isDark, setIsDark] = useState(true);
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+            
+            // DATA STATES
+            const [workouts, setWorkouts] = useState([]);
+            const [weights, setWeights] = useState([]);
+            const [shoes, setShoes] = useState([]);
+            const [biometrics, setBiometrics] = useState({ height: 170, dob: '1990-01-01', gender: 'male' });
+            const [consumption, setConsumption] = useState([]); 
+
+            const [showAddModal, setShowAddModal] = useState(false);
+            const [editingData, setEditingData] = useState(null);
+            const [isBulkEdit, setIsBulkEdit] = useState(false);
+            const [workoutTypes, setWorkoutTypes] = useState([
+                { id: '1', name: 'Corrida Leve', isDistance: true },
+                { id: '2', name: 'Treino Longo', isDistance: true },
+                { id: '3', name: 'Fartlek', isDistance: true },
+                { id: '4', name: 'Limiar', isDistance: true },
+                { id: '5', name: 'Regenerativo', isDistance: true },
+                { id: '6', name: 'Musculação', isDistance: false },
+                { id: '7', name: 'Cárdio Indoor', isDistance: false }
+            ]);
+
+            useEffect(() => {
+                const docEl = document.documentElement;
+                if(isDark) docEl.classList.add('dark'); 
+                else docEl.classList.remove('dark');
+                document.body.style.backgroundColor = isDark ? '#020617' : '#f9fafb';
+                
+                if(!isFirebaseConfigured || user?.isAnonymous) {
+                    const u = localStorage.getItem('rp_user'); if(u && !user) setUser(JSON.parse(u));
+                    const w = localStorage.getItem('rp_workouts'); if(w) setWorkouts(JSON.parse(w));
+                    const wg = localStorage.getItem('rp_weights'); if(wg) setWeights(JSON.parse(wg));
+                    const s = localStorage.getItem('rp_shoes'); if(s) setShoes(JSON.parse(s));
+                    const b = localStorage.getItem('rp_biometrics'); if(b) setBiometrics(JSON.parse(b));
+                    const wt = localStorage.getItem('rp_types'); if(wt) setWorkoutTypes(JSON.parse(wt));
+                } else {
+                    const unsubAuth = onAuthStateChanged(auth, u => {
+                        setUser(u);
+                        if(u) {
+                            const un1 = onSnapshot(query(collection(db, `users/${u.uid}/workouts`), orderBy('date', 'desc')), s => setWorkouts(s.docs.map(d=>({id:d.id, ...d.data()}))));
+                            const un2 = onSnapshot(query(collection(db, `users/${u.uid}/weights`), orderBy('date', 'desc')), s => setWeights(s.docs.map(d=>({id:d.id, ...d.data()}))));
+                            const un3 = onSnapshot(query(collection(db, `users/${u.uid}/shoes`)), s => setShoes(s.docs.map(d=>({id:d.id, ...d.data()}))));
+                            const un4 = onSnapshot(query(collection(db, `users/${u.uid}/consumption`)), s => setConsumption(s.docs.map(d=>({id:d.id, ...d.data()}))));
+                            const un5 = onSnapshot(doc(db, `users/${u.uid}/settings`, 'biometrics'), s => { if(s.exists()) setBiometrics(s.data()); });
+                            return () => { un1(); un2(); un3(); un4(); un5(); };
+                        }
+                    });
+                    return () => unsubAuth();
+                }
+            }, [user, isDark]);
+
+            useEffect(() => {
+                if(!isFirebaseConfigured || user?.isAnonymous) {
+                    localStorage.setItem('rp_workouts', JSON.stringify(workouts));
+                    localStorage.setItem('rp_weights', JSON.stringify(weights));
+                    localStorage.setItem('rp_shoes', JSON.stringify(shoes));
+                    localStorage.setItem('rp_biometrics', JSON.stringify(biometrics));
+                    localStorage.setItem('rp_types', JSON.stringify(workoutTypes));
+                }
+                localStorage.setItem('rp_theme', JSON.stringify(isDark));
+            }, [workouts, weights, shoes, biometrics, workoutTypes, isDark, user]);
+
+            // SAFE SAVE
+            const handleSaveWorkout = async (data) => {
+                let selectedType = workoutTypes.find(t => t.id === data.typeId);
+                if(!selectedType) selectedType = { name: 'Outro', isDistance: false }; // Fallback
+                
+                const processed = {
+                    ...data, 
+                    duration: parseFloat(data.duration) || 0, // Force number
+                    typeName: selectedType.name,
+                    isDistance: selectedType.isDistance,
+                    pace: (selectedType.isDistance && data.distance > 0) ? data.duration/data.distance : 0,
+                    met: selectedType.isDistance ? calculateMET(data.distance, data.duration) : 0,
+                    load: data.duration * (parseInt(data.rpe)||0),
+                    updatedAt: new Date().toISOString()
+                };
+
+                if(isFirebaseConfigured && !user.isAnonymous) {
+                    if(data.id) { const {id, ...r} = processed; await updateDoc(doc(db, `users/${user.uid}/workouts`, id), r); }
+                    else { const {id, ...r} = processed; await addDoc(collection(db, `users/${user.uid}/workouts`), r); }
+                } else {
+                    if(data.id) setWorkouts(prev => prev.map(w => w.id === data.id ? processed : w));
+                    else setWorkouts(prev => [{...processed, id: Date.now().toString()}, ...prev]);
+                }
+                setShowAddModal(false);
+            };
+
+            const handleDeleteWorkout = async (ids) => {
+                if(!confirm("Deletar?")) return;
+                if(isFirebaseConfigured && !user.isAnonymous) {
+                    for(let id of ids) await deleteDoc(doc(db, `users/${user.uid}/workouts`, id));
+                } else {
+                    setWorkouts(prev => prev.filter(w => !ids.includes(w.id)));
+                }
+            };
+
+            const handleDuplicate = async (ids) => {
+                if(!confirm("Duplicar?")) return;
+                const items = ids.map(id => workouts.find(w => w.id === id)).filter(Boolean).map(w => {
+                    const {id, ...r} = w;
+                    const d = new Date(r.date + 'T00:00:00');
+                    d.setDate(d.getDate() + 7);
+                    r.date = d.toISOString().substr(0,10);
+                    return r;
+                });
+                
+                if(isFirebaseConfigured && !user.isAnonymous) {
+                    for(let item of items) await addDoc(collection(db, `users/${user.uid}/workouts`), item);
+                } else {
+                    setWorkouts(prev => [...items.map(i => ({...i, id: Math.random().toString()})), ...prev]);
+                }
+            };
+
+            const saveBiometrics = async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const data = {
+                    height: parseFloat(form.height.value),
+                    dob: form.dob.value,
+                    gender: form.gender.value
+                };
+                if(isFirebaseConfigured && !user.isAnonymous) {
+                    await setDoc(doc(db, `users/${user.uid}/settings`, 'biometrics'), data);
+                } else {
+                    setBiometrics(data);
+                }
+                alert("Salvo!");
+            };
+
+            const deleteType = (id) => { if(confirm("Deletar tipo?")) setWorkoutTypes(prev => prev.filter(t => t.id !== id)); };
+            const toggleTheme = () => setIsDark(!isDark);
+            
+            const handleLogout = () => {
+                if(isFirebaseConfigured && !user.isAnonymous) signOut(auth);
+                else { setUser(null); localStorage.removeItem('rp_user'); }
+                setView('dashboard');
+            };
+
+            if(!user) return <LoginScreen onLogin={setUser} isDark={isDark} toggleTheme={toggleTheme} isOnline={isFirebaseConfigured}/>;
+
+            return (
+                <div className={`min-h-screen font-sans transition-colors duration-300 ${isDark ? 'bg-slate-950 text-gray-200' : 'bg-gray-50 text-gray-800'}`}>
+                    <div className={`md:hidden fixed top-0 w-full z-40 p-4 flex items-center justify-between border-b transition-colors duration-300 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+                        <div className="flex items-center gap-2">
+                            <button onClick={()=>setSidebarOpen(true)} className={isDark ? 'text-white' : 'text-gray-800'}><Icon name="menu" className="w-6 h-6"/></button>
+                            <span className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>RunnerPro</span>
+                        </div>
+                        <button onClick={toggleTheme} className={isDark ? 'text-gray-400' : 'text-gray-500'}><Icon name={isDark?'sun':'moon'} className="w-5 h-5"/></button>
+                    </div>
+
+                    <Sidebar view={view} setView={setView} isDark={isDark} toggleTheme={toggleTheme} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} handleLogout={handleLogout}/>
+
+                    <main className="md:ml-64 p-4 md:p-8 pt-20 md:pt-8 max-w-7xl mx-auto">
+                        {view === 'dashboard' && <Dashboard workouts={workouts} weights={weights}/>}
+                        {view === 'history' && <HistoryView workouts={workouts} setWorkouts={setWorkouts} workoutTypes={workoutTypes} isDark={isDark} onEdit={(w)=>{setEditingData(w); setShowAddModal(true);}} onDuplicate={handleDuplicate} onDelete={handleDeleteWorkout}/>}
+                        {view === 'weight' && <WeightView weights={weights} setWeights={setWeights} isOnline={isFirebaseConfigured} user={user}/>}
+                        {view === 'metabolic' && <MetabolicView workouts={workouts} weights={weights} biometrics={biometrics} consumption={consumption} setConsumption={setConsumption} user={user} isOnline={isFirebaseConfigured}/>}
+                        {view === 'equipment' && <EquipmentView shoes={shoes} setShoes={setShoes} isDark={isDark} isOnline={isFirebaseConfigured} user={user} workouts={workouts}/>}
+                        {view === 'settings' && (
+                            <div className="space-y-6 pb-20">
+                                <h2 className="text-2xl font-bold">Configurações</h2>
+                                <SettingsView user={user} workoutTypes={workoutTypes} workouts={workouts} shoes={shoes} handleLogout={()=>{}} handleAddType={()=>{}} deleteItem={deleteType} setWorkoutTypes={setWorkoutTypes} setWorkouts={setWorkouts} setShoes={setShoes} setUser={setUser} isDark={isDark} isOnline={isFirebaseConfigured}/>
+                                <form onSubmit={saveBiometrics} className={`p-6 rounded-xl border ${isDark?'bg-slate-800 border-slate-700':'bg-white border-gray-200 shadow-sm'}`}>
+                                    <h3 className="font-bold mb-4 flex items-center gap-2"><Icon name="user" className="w-5 h-5 text-emerald-500"/> Dados Biométricos (Para TMB)</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div><label className="text-xs opacity-70 block mb-1">Altura (cm)</label><input name="height" type="number" defaultValue={biometrics.height} className={`w-full p-2 rounded border ${isDark?'bg-slate-900 border-slate-600':'bg-white border-gray-300 outline-none focus:border-emerald-500'}`}/></div>
+                                        <div><label className="text-xs opacity-70 block mb-1">Nascimento</label><input name="dob" type="date" defaultValue={biometrics.dob} className={`w-full p-2 rounded border ${isDark?'bg-slate-900 border-slate-600':'bg-white border-gray-300 outline-none focus:border-emerald-500'}`}/></div>
+                                        <div><label className="text-xs opacity-70 block mb-1">Gênero</label><select name="gender" defaultValue={biometrics.gender} className={`w-full p-2 rounded border ${isDark?'bg-slate-900 border-slate-600':'bg-white border-gray-300 outline-none focus:border-emerald-500'}`}><option value="male">Masculino</option><option value="female">Feminino</option></select></div>
+                                    </div>
+                                    <button className="mt-4 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition-colors">Salvar Biometria</button>
+                                </form>
+                            </div>
+                        )}
+                    </main>
+
+                    <button onClick={()=>{setEditingData(null); setShowAddModal(true)}} className={`md:hidden fixed bottom-6 right-6 text-white p-4 rounded-full shadow-2xl border-4 z-40 transition-transform active:scale-95 ${isDark ? 'bg-emerald-500 border-slate-900' : 'bg-emerald-600 border-white'}`}><Icon name="plus" className="w-6 h-6"/></button>
+                    <AddWorkoutModal isOpen={showAddModal} onClose={()=>setShowAddModal(false)} onSave={handleSaveWorkout} initialData={editingData} workoutTypes={workoutTypes} shoes={shoes} isDark={isDark}/>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<RunnerApp />);
+    </script>
 </body>
 </html>
+
+
